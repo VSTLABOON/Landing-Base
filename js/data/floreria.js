@@ -2,8 +2,8 @@
 
 export const meta = {
   nombre: 'Flores del Corazón',
-  whatsapp: '528182223344', // ← reemplazar con número real de MTY
-  waBase: 'https://wa.me/528182223344',
+  whatsapp: '522215881569', // ← reemplazar con número real de MTY
+  waBase: 'https://wa.me/522215881569',
 }
 
 // ── PRODUCTOS ────────────────────────────────────────────────────
