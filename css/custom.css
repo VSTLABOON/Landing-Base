@@ -1,0 +1,25 @@
+/* ═══════════════════════════════════════════════════
+   FLORES DEL CORAZÓN — custom.css (orchestrator)
+   Importa todos los módulos en orden de dependencia.
+   No escribir estilos aquí directamente.
+   ═══════════════════════════════════════════════════
+
+   Módulos:
+   1. globals.css   — tokens, reset, grain, cursor, keyframes, reveal
+   2. layout.css    — header, mobile nav, footer
+   3. hero.css      — hero section + stats bar + buttons
+   4. sections.css  — trust, catálogo, servicios, testimonios,
+                       beneficios, flores, cobertura, nosotros, galería
+   5. components.css — modal, countdown banner, ocultar elementos legacy
+   6. carrito.css   — FAB, backdrop, drawer, order bar
+
+   ═══════════════════════════════════════════════════ */
+
+@import url('./globals.css');
+@import url('./layout.css');
+@import url('./hero.css');
+@import url('./sections.css');
+@import url('./components.css');
+@import url('./carrito.css');
+@import url('./servicioCatalogo.css');
+@import url('./seleccion.css');

@@ -1,0 +1,111 @@
+/* ═══════════════════════════════════════════════════
+   FLORES DEL CORAZÓN — components.css
+   Modal · Countdown banner · Sección Pedido (fallback)
+   ═══════════════════════════════════════════════════ */
+
+/* ─── MODAL ───────────────────────────────────────────── */
+#modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(10px);
+  z-index: 10000; opacity: 0; pointer-events: none;
+  transition: opacity .3s;
+}
+#modal-backdrop.active { opacity: 1; pointer-events: all; }
+
+#modal {
+  position: fixed; left: 50%; top: 50%;
+  transform: translate(-50%,-50%) scale(.94) translateY(12px);
+  width: min(640px, calc(100vw - 2rem));
+  max-height: 90svh;
+  background: var(--blanco); border-radius: 20px;
+  box-shadow: var(--shadow-lg); z-index: 10001;
+  opacity: 0; pointer-events: none;
+  overflow: hidden; display: flex; flex-direction: column;
+  transition: opacity .3s, transform .35s var(--ease-spring);
+  color: var(--texto);
+}
+#modal.active {
+  opacity: 1; pointer-events: all;
+  transform: translate(-50%,-50%) scale(1) translateY(0);
+}
+@media (max-width:480px) {
+  #modal {
+    left: 0; top: auto; bottom: 0;
+    transform: translateY(20px) scale(.98);
+    width: 100%; max-height: 90svh;
+    border-radius: 20px 20px 0 0;
+  }
+  #modal.active { transform: translateY(0) scale(1); }
+}
+
+#modal-close {
+  position: absolute; top: .9rem; right: .9rem; z-index: 1;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,.07);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, transform .2s;
+}
+#modal-close:hover { background: rgba(0,0,0,.13); transform: scale(1.1); }
+
+#modal-img-wrap {
+  position: relative; flex-shrink: 0; height: 220px;
+  background: var(--crema-dark); overflow: hidden;
+}
+#modal-img { width: 100%; height: 100%; object-fit: cover; }
+
+#modal-price-badge {
+  position: absolute; bottom: .9rem; right: .9rem;
+  background: var(--verde); color: #fff;
+  font-family: var(--font-display); font-size: 1.3rem; font-weight: 700;
+  padding: .35rem .9rem; border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+}
+
+#modal-body { padding: 1.6rem 1.8rem 2rem; overflow-y: auto; overscroll-behavior: contain; }
+#modal-title-text { font-family: var(--font-display); font-size: 1.8rem; font-weight: 700; color: var(--texto); margin-bottom: .4rem; line-height: 1.1; }
+.modal-divider { width: 36px; height: 2px; background: linear-gradient(90deg,var(--verde),var(--rosa)); border-radius: 2px; margin-bottom: 1rem; }
+.modal-p { font-size: .88rem; line-height: 1.8; color: var(--texto-muted); margin-bottom: .6rem; }
+
+#modal-wa-btn {
+  display: none; align-items: center; justify-content: center; gap: .7rem;
+  width: 100%; margin-top: 1.4rem; padding: .9rem;
+  background: #25D366; color: #fff; border-radius: 12px;
+  font-family: var(--font-body); font-size: .88rem; font-weight: 700;
+  transition: background .2s, transform .2s var(--ease-spring);
+}
+#modal-wa-btn:hover { background: #1EBA57; transform: scale(1.02); }
+
+/* ─── COUNTDOWN BANNER ──────────────────────────────── */
+#countdown-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: linear-gradient(90deg, var(--verde-dark), var(--rosa) 60%, var(--dorado));
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  padding: .55rem 3rem .55rem 1rem;
+  transition: transform .35s var(--ease-out), opacity .35s;
+}
+#countdown-banner.cd-hiding { transform: translateY(-100%); opacity: 0; }
+
+.cd-inner  { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; justify-content: center; }
+.cd-label  { display: flex; align-items: center; gap: .4rem; font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.cd-units  { display: flex; align-items: center; gap: .25rem; }
+.cd-unit   { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.18); border-radius: 6px; padding: .2rem .5rem; min-width: 38px; }
+.cd-unit span  { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; line-height: 1; letter-spacing: .04em; }
+.cd-unit small { font-size: .5rem; letter-spacing: .12em; text-transform: uppercase; opacity: .75; margin-top: .05rem; }
+.cd-sep    { font-weight: 700; opacity: .5; font-size: 1rem; }
+.cd-cta    { background: #fff; color: var(--verde-dark); padding: .3rem .9rem; border-radius: 999px; font-size: .72rem; font-weight: 700; letter-spacing: .06em; white-space: nowrap; transition: transform .2s var(--ease-spring), background .2s; }
+.cd-cta:hover { transform: scale(1.06); background: var(--crema); }
+
+#cd-close {
+  position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(255,255,255,.2); font-size: .75rem; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+}
+#cd-close:hover { background: rgba(255,255,255,.35); }
+@media (max-width:480px) { .cd-cta { display: none; } .cd-label { font-size: .62rem; } }
+
+/* ─── SECCIÓN PEDIDO ESTÁTICA (oculta — sustituida por drawer) ── */
+#wa-float,
+#pedido   { display: none !important; }

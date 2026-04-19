@@ -1,0 +1,18 @@
+{
+  "name": "floreria2",
+  "version": "1.0.0",
+  "description": "Landing page y plataforma e-commerce (frontend) para negocio local de florería situado en Monterrey, Nuevo León. Este proyecto está diseñado con un enfoque Mobile-First, una arquitectura altamente modular en ecosistema Vanilla (HTML, CSS y JS sin uso excesivo de frameworks de terceros) y una integración transaccional fluida a través de WhatsApp.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^4.2.2"
+  }
+}
