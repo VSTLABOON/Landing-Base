@@ -4,15 +4,22 @@
   "description": "Landing page y plataforma e-commerce (frontend) para negocio local de florería situado en Monterrey, Nuevo León. Este proyecto está diseñado con un enfoque Mobile-First, una arquitectura altamente modular en ecosistema Vanilla (HTML, CSS y JS sin uso excesivo de frameworks de terceros) y una integración transaccional fluida a través de WhatsApp.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.2",
+    "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.10",
-    "tailwindcss": "^4.2.2"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^4.2.2",
+    "vite": "^7.3.4"
   }
 }
