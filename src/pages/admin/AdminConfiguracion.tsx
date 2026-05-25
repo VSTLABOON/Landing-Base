@@ -1,0 +1,583 @@
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { type DropResult } from '@hello-pangea/dnd';
+import {
+  Palette,
+  LayoutTemplate,
+  FileText,
+  Save,
+  Loader2,
+  ExternalLink,
+  Monitor,
+  Smartphone,
+  Eye
+} from 'lucide-react';
+import { useTenant } from '../../context/TenantContext';
+import { useTheming } from '../../hooks/useTheming';
+import { supabase } from '../../lib/supabaseClient';
+import { toast } from '../../store/toastStore';
+import { logger } from '../../lib/logger';
+
+// --- Subcomponentes Extraídos ---
+import { TemaTab } from './components/config/TemaTab';
+import { GeneralTab } from './components/config/GeneralTab';
+import { ContenidoTab } from './components/config/ContenidoTab';
+
+import { FONT_OPTIONS } from '../../lib/constants.ts';
+
+function reorder<T>(list: T[], startIndex: number, endIndex: number): T[] {
+  const result = Array.from(list);
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+  return result;
+}
+
+export default function AdminConfiguracion() {
+  const { tenant, updateTenantConfig } = useTenant();
+  const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState<'tema' | 'general' | 'contenido'>('tema');
+
+  // Control de apertura de acordeones para atajos de edición
+  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({
+    Hero: true,
+    Nosotros: true,
+    Cobertura: false,
+  });
+
+  const handleToggleAccordion = useCallback((key: string, isOpen: boolean) => {
+    setOpenAccordions(prev => ({
+      ...prev,
+      [key]: isOpen
+    }));
+  }, []);
+
+  const handleEditSection = useCallback((sectionKey: string) => {
+    if (sectionKey === 'Catalogo') {
+      navigate('/admin/catalogo');
+      return;
+    }
+
+    const tabMap: Record<string, 'tema' | 'general' | 'contenido'> = {
+      Hero: 'contenido',
+      Servicios: 'contenido',
+      Beneficios: 'contenido',
+      Testimonios: 'contenido',
+      Flores: 'contenido',
+      Galeria: 'contenido',
+      Nosotros: 'general',
+      Cobertura: 'general',
+    };
+
+    const targetTab = tabMap[sectionKey];
+    if (!targetTab) return;
+
+    setActiveTab(targetTab);
+
+    if (sectionKey === 'Hero' || sectionKey === 'Nosotros' || sectionKey === 'Cobertura') {
+      setOpenAccordions(prev => ({
+        ...prev,
+        [sectionKey]: true
+      }));
+    }
+
+    // Desplazamiento suave y efecto destello (glow)
+    setTimeout(() => {
+      const element = document.getElementById(`editor-${sectionKey}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('ring-4', 'ring-emerald-500/30', 'border-emerald-500');
+        setTimeout(() => {
+          element.classList.remove('ring-4', 'ring-emerald-500/30', 'border-emerald-500');
+        }, 2000);
+      }
+    }, 150);
+  }, [navigate]);
+
+  // Tema
+  const [colorPrimario, setColorPrimario]     = useState(tenant.color_primario);
+  const [colorSecundario, setColorSecundario] = useState(tenant.color_secundario);
+  const [colorAcento, setColorAcento]         = useState(tenant.color_acento);
+  const [fontFamily, setFontFamily]           = useState(tenant.font_family || 'Inter');
+  const [logoPreview, setLogoPreview]         = useState<string | null>(tenant.logo_url);
+  const [logoError, setLogoError]             = useState<string | null>(null);
+  const [sections, setSections]               = useState<string[]>(tenant.orden_secciones);
+
+  // Información General
+  const [textoNosotros, setTextoNosotros] = useState(tenant.texto_nosotros || '');
+  const [anioFundacion, setAnioFundacion] = useState(tenant.anio_fundacion || new Date().getFullYear());
+  const [firma, setFirma] = useState(tenant.firma || '');
+  const [mapaUrl, setMapaUrl] = useState(tenant.mapa_url || '');
+  const [direccion, setDireccion] = useState(tenant.direccion || '');
+  const [colonias, setColonias] = useState(tenant.colonias?.join(', ') || '');
+
+  // Evento/Promoción
+  const [eventoActivo, setEventoActivo] = useState(tenant.evento?.activo || false);
+  const [eventoTitulo, setEventoTitulo] = useState(tenant.evento?.titulo || '');
+  const [eventoProducto, setEventoProducto] = useState(tenant.evento?.producto || '');
+  const [eventoFechaFin, setEventoFechaFin] = useState(tenant.evento?.fecha_fin || '');
+
+  // Contenido Dinámico
+  const [seccionesData, setSeccionesData] = useState(tenant.secciones || {});
+  const [serviciosList, setServiciosList] = useState(tenant.servicios || []);
+  const [beneficiosList, setBeneficiosList] = useState(tenant.beneficios || []);
+  const [testimoniosList, setTestimoniosList] = useState(tenant.testimonios || []);
+  const [floresList, setFloresList] = useState(tenant.flores || []);
+  const [galeriaList, setGaleriaList] = useState(tenant.galeria || []);
+
+  const [saving, setSaving] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<'mobile' | 'desktop'>('mobile');
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+
+  // --- Dirty State ---
+  const hasUnsavedChanges = useMemo(() => {
+    return (
+      colorPrimario !== tenant.color_primario ||
+      colorSecundario !== tenant.color_secundario ||
+      colorAcento !== tenant.color_acento ||
+      fontFamily !== (tenant.font_family || 'Inter') ||
+      logoPreview !== tenant.logo_url ||
+      JSON.stringify(sections) !== JSON.stringify(tenant.orden_secciones) ||
+      textoNosotros !== (tenant.texto_nosotros || '') ||
+      anioFundacion !== (tenant.anio_fundacion || new Date().getFullYear()) ||
+      firma !== (tenant.firma || '') ||
+      mapaUrl !== (tenant.mapa_url || '') ||
+      direccion !== (tenant.direccion || '') ||
+      colonias !== (tenant.colonias?.join(', ') || '') ||
+      eventoActivo !== (tenant.evento?.activo || false) ||
+      eventoTitulo !== (tenant.evento?.titulo || '') ||
+      eventoProducto !== (tenant.evento?.producto || '') ||
+      eventoFechaFin !== (tenant.evento?.fecha_fin || '') ||
+      JSON.stringify(serviciosList) !== JSON.stringify(tenant.servicios || []) ||
+      JSON.stringify(beneficiosList) !== JSON.stringify(tenant.beneficios || []) ||
+      JSON.stringify(testimoniosList) !== JSON.stringify(tenant.testimonios || []) ||
+      JSON.stringify(floresList) !== JSON.stringify(tenant.flores || []) ||
+      JSON.stringify(galeriaList) !== JSON.stringify(tenant.galeria || []) ||
+      JSON.stringify(seccionesData) !== JSON.stringify(tenant.secciones || {})
+    );
+  }, [
+    colorPrimario, colorSecundario, colorAcento, fontFamily, logoPreview, sections,
+    textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias,
+    serviciosList, beneficiosList, testimoniosList, floresList, galeriaList, seccionesData,
+    tenant
+  ]);
+
+  const handleDiscard = useCallback(() => {
+    setColorPrimario(tenant.color_primario);
+    setColorSecundario(tenant.color_secundario);
+    setColorAcento(tenant.color_acento);
+    setFontFamily(tenant.font_family || 'Inter');
+    setSections(tenant.orden_secciones);
+    setLogoPreview(tenant.logo_url);
+    setTextoNosotros(tenant.texto_nosotros || '');
+    setAnioFundacion(tenant.anio_fundacion || new Date().getFullYear());
+    setFirma(tenant.firma || '');
+    setMapaUrl(tenant.mapa_url || '');
+    setDireccion(tenant.direccion || '');
+    setColonias(tenant.colonias?.join(', ') || '');
+    setEventoActivo(tenant.evento?.activo || false);
+    setEventoTitulo(tenant.evento?.titulo || '');
+    setEventoProducto(tenant.evento?.producto || '');
+    setEventoFechaFin(tenant.evento?.fecha_fin || '');
+    setServiciosList(tenant.servicios || []);
+    setBeneficiosList(tenant.beneficios || []);
+    setTestimoniosList(tenant.testimonios || []);
+    setFloresList(tenant.flores || []);
+    setGaleriaList(tenant.galeria || []);
+    setSeccionesData(tenant.secciones || {});
+  }, [tenant]);
+
+  // BeforeUnload guard
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Google Fonts dynamic injection
+  useEffect(() => {
+    const fontsToLoad = FONT_OPTIONS.map(f => f.value).filter(f => !['Inter', 'Arial', 'system-ui'].includes(f));
+    const fontFamilies = fontsToLoad.map(f => f.replace(/ /g, '+')).join('&family=');
+    
+    const id = 'admin-dynamic-fonts';
+    if (!document.getElementById(id)) {
+      const link = document.createElement('link');
+      link.id = id;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${fontFamilies}&display=swap`;
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  // Update root CSS vars live
+  useTheming({
+    color_primario: colorPrimario,
+    color_secundario: colorSecundario,
+    color_acento: colorAcento,
+    font_family: fontFamily
+  }, true);
+
+  // Send real-time preview updates to iframe(s)
+  useEffect(() => {
+    const iframes = document.querySelectorAll('iframe.preview-iframe') as NodeListOf<HTMLIFrameElement>;
+    if (iframes.length > 0) {
+      const payload = {
+        color_primario: colorPrimario,
+        color_secundario: colorSecundario,
+        color_acento: colorAcento,
+        font_family: fontFamily,
+        logo_url: logoPreview,
+        orden_secciones: sections,
+        texto_nosotros: textoNosotros,
+        anio_fundacion: anioFundacion,
+        firma: firma,
+        mapa_url: mapaUrl,
+        colonias: colonias.split(',').map(c => c.trim()).filter(Boolean),
+        evento: {
+          activo: eventoActivo,
+          titulo: eventoTitulo,
+          producto: eventoProducto,
+          fecha_fin: eventoFechaFin,
+        },
+        servicios: serviciosList,
+        beneficios: beneficiosList,
+        testimonios: testimoniosList,
+        flores: floresList,
+        galeria: galeriaList,
+        secciones: seccionesData,
+      };
+      
+      iframes.forEach(iframe => {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.postMessage(
+            { type: 'UPDATE_PREVIEW', payload },
+            window.location.origin
+          );
+        }
+      });
+    }
+  }, [
+    colorPrimario, colorSecundario, colorAcento, fontFamily, logoPreview, sections,
+    textoNosotros, anioFundacion, firma, mapaUrl, colonias,
+    eventoActivo, eventoTitulo, eventoProducto, eventoFechaFin,
+    serviciosList, beneficiosList, testimoniosList, floresList, galeriaList, seccionesData
+  ]);
+
+  const handleDragEnd = useCallback((result: DropResult) => {
+    if (!result.destination) return;
+    if (result.source.index === result.destination.index) return;
+    const reordered = reorder(sections, result.source.index, result.destination.index);
+    setSections(reordered);
+  }, [sections]);
+
+  const handleLogoChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setLogoError(null);
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('La imagen del logo no puede superar los 2 MB.');
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const fileName = `${tenant.id}/logo-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) {
+        logger.error('[Logo] Upload error:', uploadError as Error);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(fileName);
+
+      setLogoPreview(publicUrl);
+    } catch (err) {
+      logger.error('[Logo] Error:', err as Error);
+    }
+  }, [tenant.id]);
+
+  const handleSave = useCallback(async () => {
+    if (!hasUnsavedChanges) return;
+    
+    setSaving(true);
+
+    try {
+      await updateTenantConfig({
+        color_primario:   colorPrimario,
+        color_secundario: colorSecundario,
+        color_acento:     colorAcento,
+        logo_url:         logoPreview,
+        orden_secciones:  sections,
+        font_family:      fontFamily,
+        texto_nosotros:   textoNosotros,
+        anio_fundacion:   anioFundacion,
+        firma:            firma,
+        mapa_url:         mapaUrl,
+        direccion:        direccion,
+        colonias:         colonias.split(',').map(c => c.trim()).filter(Boolean),
+        servicios:        serviciosList,
+        beneficios:       beneficiosList,
+        testimonios:      testimoniosList,
+        flores:           floresList,
+        galeria:          galeriaList,
+        secciones:        seccionesData,
+        evento: {
+          activo: eventoActivo,
+          titulo: eventoTitulo,
+          producto: eventoProducto,
+          // datetime-local produce "YYYY-MM-DDTHH:mm" sin timezone.
+          // Convertir a ISO 8601 completo para almacenamiento consistente.
+          fecha_fin: eventoFechaFin
+            ? new Date(eventoFechaFin).toISOString()
+            : '',
+        },
+      });
+
+      toast.success('Configuración guardada', {
+        message: 'Tus cambios se han guardado exitosamente.',
+        action: { label: 'Ver tienda', href: '/?preview=true' }
+      });
+    } catch (err) {
+      logger.error('[AdminConfiguracion] Error al guardar:', err as Error);
+      toast.error('Error al guardar', {
+        message: 'Hubo un problema al guardar tu configuración. Intenta de nuevo.'
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    colorPrimario, colorSecundario, colorAcento, logoPreview, sections, fontFamily,
+    textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias,
+    serviciosList, beneficiosList, testimoniosList, floresList, galeriaList, seccionesData,
+    updateTenantConfig, hasUnsavedChanges
+  ]);
+
+  const getListLength = (key: string) => {
+    switch (key) {
+      case 'Servicios': return serviciosList.length;
+      case 'Beneficios': return beneficiosList.length;
+      case 'Testimonios': return testimoniosList.length;
+      case 'Flores': return floresList.length;
+      case 'Galeria': return galeriaList.length;
+      default: return -1;
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* ── Encabezado ── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-1">Store Builder</h1>
+          <p className="text-sm text-[var(--color-text-tertiary)]">
+            Personaliza la apariencia y el contenido de tu tienda
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <a
+            href="/?preview=true"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold backdrop-blur-md bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/10 text-[var(--color-text-primary)] hover:bg-white/30 dark:hover:bg-white/10 transition-colors shadow-sm"
+          >
+            Vista previa <ExternalLink className="w-4 h-4" />
+          </a>
+          {/* Botón flotante/visible en móvil para la vista previa */}
+          <button
+            onClick={() => setShowMobilePreview(true)}
+            className="xl:hidden inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold backdrop-blur-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors shadow-sm"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasUnsavedChanges}
+            className={`
+              inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+              transition-all duration-300 shadow-sm backdrop-blur-md border
+              ${saving
+                ? 'bg-white/10 dark:bg-black/10 border-white/20 dark:border-white/10 text-[var(--color-text-tertiary)] cursor-wait'
+                : !hasUnsavedChanges
+                  ? 'bg-white/10 dark:bg-black/10 border-white/20 dark:border-white/10 text-[var(--color-text-tertiary)] opacity-70 cursor-not-allowed'
+                  : 'border-transparent active:scale-[0.97]'
+              }
+            `}
+            style={hasUnsavedChanges && !saving ? { backgroundColor: 'var(--color-primario)', color: 'var(--color-primario-texto)' } : {}}
+          >
+            {saving ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Guardando…</>
+            ) : (
+              <><Save className="w-4 h-4" /> Guardar cambios</>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Dirty State Banner ── */}
+      {hasUnsavedChanges && (
+        <div className="sticky top-4 z-40 backdrop-blur-xl bg-amber-50/80 dark:bg-amber-900/30 border border-amber-200/50 dark:border-amber-700/50 rounded-xl px-4 py-3 shadow-sm flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-sm font-medium">Tienes cambios sin guardar. Asegúrate de guardarlos para publicarlos en tu tienda.</span>
+          </div>
+          <button
+            onClick={handleDiscard}
+            className="px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-200 hover:bg-amber-500/20 rounded-lg transition-colors"
+          >
+            Descartar cambios
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-[450px_1fr] 2xl:grid-cols-[500px_1fr] gap-8 items-start">
+        <div className="min-w-0 w-full max-w-xl mx-auto xl:mx-0">
+          {/* ── Tabs Horizontales ── */}
+        <div className="flex backdrop-blur-xl bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-2xl p-1.5 mb-6 shadow-sm overflow-x-auto relative z-10">
+          {[
+            { id: 'tema', label: 'Diseño', icon: Palette },
+            { id: 'contenido', label: 'Estructura', icon: LayoutTemplate },
+            { id: 'general', label: 'Ajustes', icon: FileText },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'shadow-sm border border-white/10'
+                  : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-white/10'
+              }`}
+              style={activeTab === tab.id ? { backgroundColor: 'var(--color-primario)', color: 'var(--color-primario-texto)' } : {}}
+            >
+              <tab.icon className="w-4 h-4" style={activeTab === tab.id ? { color: 'var(--color-primario-texto)' } : { color: 'var(--color-text-tertiary)' }} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Contenido ── */}
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={activeTab}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-6"
+          >
+            
+            {/* TAB: TEMA */}
+            {activeTab === 'tema' && (
+            <TemaTab
+              state={{ colorPrimario, colorSecundario, colorAcento, fontFamily, logoPreview, logoError, sections }}
+              actions={{ setColorPrimario, setColorSecundario, setColorAcento, setFontFamily, handleLogoChange, handleDragEnd }}
+              tenant={tenant}
+              listLengths={{
+                Servicios: serviciosList.length,
+                Beneficios: beneficiosList.length,
+                Testimonios: testimoniosList.length,
+                Flores: floresList.length,
+                Galeria: galeriaList.length,
+              }}
+              onEditSection={handleEditSection}
+            />
+          )}
+
+          {/* TAB: INFORMACIÓN GENERAL */}
+          {activeTab === 'general' && (
+            <GeneralTab
+              state={{ textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias, eventoActivo, eventoTitulo, eventoProducto, eventoFechaFin, openAccordions }}
+              actions={{ setTextoNosotros, setAnioFundacion, setFirma, setMapaUrl, setDireccion, setColonias, setEventoActivo, setEventoTitulo, setEventoProducto, setEventoFechaFin, onToggleAccordion: handleToggleAccordion }}
+            />
+          )}
+
+          {/* TAB: CONTENIDO DINÁMICO */}
+          {activeTab === 'contenido' && (
+            <ContenidoTab
+              state={{ serviciosList, beneficiosList, testimoniosList, floresList, galeriaList, seccionesData, openAccordions }}
+              actions={{ setServiciosList, setBeneficiosList, setTestimoniosList, setFloresList, setGaleriaList, setSeccionesData, onToggleAccordion: handleToggleAccordion }}
+              tenant={tenant}
+            />
+          )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* ── Lado Derecho: Preview Pegajoso ── */}
+      <div className="hidden xl:flex flex-col sticky top-4 h-[calc(100vh-2rem)] backdrop-blur-xl bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-3xl overflow-hidden shadow-xl">
+        <div className="bg-white/10 dark:bg-black/20 px-4 py-3 border-b border-white/20 dark:border-white/10 flex items-center justify-between backdrop-blur-md">
+          <span className="text-xs font-bold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
+            <Eye className="w-4 h-4 text-[var(--color-text-primary)]" /> Vista Previa
+          </span>
+          <div className="flex items-center gap-1 bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 p-0.5 rounded-lg">
+            <button onClick={() => setPreviewDevice('mobile')} className={`p-1.5 rounded-md transition-colors ${previewDevice === 'mobile' ? 'bg-white/20 dark:bg-white/10 text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'}`}>
+              <Smartphone className="w-4 h-4" />
+            </button>
+            <button onClick={() => setPreviewDevice('desktop')} className={`p-1.5 rounded-md transition-colors ${previewDevice === 'desktop' ? 'bg-white/20 dark:bg-white/10 text-[var(--color-text-primary)] shadow-sm' : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]'}`}>
+              <Monitor className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 bg-transparent flex justify-center overflow-hidden relative">
+          <iframe
+            src="/?preview=true"
+            className={`preview-iframe border-0 bg-white shadow-xl transition-all duration-300 relative z-10 ${previewDevice === 'mobile' ? 'w-[375px] h-[calc(100%-2rem)] mt-4 rounded-[2.5rem] border-[8px] border-black/80 shadow-[0_0_0_1px_rgba(255,255,255,0.2)]' : 'w-full h-full'}`}
+            title="Preview"
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* ── Modal Vista Previa Móvil ── */}
+    <AnimatePresence>
+      {showMobilePreview && (
+        <motion.div
+          initial={{ opacity: 0, y: '100%' }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: '100%' }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          className="fixed inset-0 z-[9999] bg-[var(--color-background-primary)] flex flex-col xl:hidden"
+        >
+          {/* Header del Modal */}
+          <div className="flex items-center justify-between px-4 py-3 bg-[var(--color-background-secondary)] border-b border-[var(--color-border-tertiary)] shrink-0">
+            <span className="text-sm font-bold text-[var(--color-text-primary)] uppercase tracking-wider flex items-center gap-2">
+              <Eye className="w-4 h-4 text-emerald-500" /> Vista Previa en Vivo
+            </span>
+            <button
+              onClick={() => setShowMobilePreview(false)}
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+            >
+              Cerrar
+            </button>
+          </div>
+          
+          {/* Iframe */}
+          <div className="flex-1 w-full h-full bg-[var(--color-background-tertiary)] overflow-hidden">
+            <iframe
+              src="/?preview=true"
+              className="preview-iframe w-full h-full border-0"
+              title="Mobile Preview"
+            />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+  );
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { logger } from '../../lib/logger';
 
 /**
  * InstagramFeed — Componente que consume instagram_cache de Supabase.
@@ -55,14 +56,21 @@ export default function InstagramFeed({ tiendaId, slug, limit = 8 }) {
           .order('timestamp', { ascending: false })
           .limit(limit);
 
-        if (cacheErr) throw cacheErr;
+        if (cacheErr) {
+          // Si la tabla no existe aún, simplemente no renderizamos el feed
+          if (cacheErr.code === 'PGRST205' || cacheErr.message?.includes('schema cache')) {
+            if (!cancelled) { setPosts([]); }
+            return;
+          }
+          throw cacheErr;
+        }
 
         if (!cancelled) {
           setPosts(data || []);
         }
       } catch (err) {
         if (!cancelled) {
-          console.warn(`⚠️ [InstagramFeed] ${err.message}`);
+          logger.warn(`[InstagramFeed] ${err.message}`);
           setError(err.message);
         }
       } finally {
@@ -75,7 +83,7 @@ export default function InstagramFeed({ tiendaId, slug, limit = 8 }) {
   }, [tiendaId, slug, limit]);
 
   // ── Estado vacío: sin conexión o sin posts ────────────────
-  if (!loading && posts.length === 0 && !error) {
+  if (!loading && posts.length === 0) {
     return null; // No renderizar nada si no hay feed configurado
   }
 
@@ -91,10 +99,10 @@ export default function InstagramFeed({ tiendaId, slug, limit = 8 }) {
           </svg>
           @floresdel.corazon
         </p>
-        <h2 className="font-display text-[clamp(2rem,5vw,3.4rem)] leading-[1.05] font-bold text-white mb-2">
+        <h2 className="font-display text-[clamp(2rem,5vw,3.4rem)] leading-[1.05] font-bold text-[var(--color-background-primary)] mb-2">
           Síguenos en <em className="italic text-rosa not-italic">Instagram</em>
         </h2>
-        <p className="text-[0.86rem] text-white/40 font-light">
+        <p className="text-[0.86rem] text-[var(--color-background-primary)]/40 font-light">
           Las entregas más recientes directo desde nuestro feed
         </p>
       </div>
@@ -105,13 +113,13 @@ export default function InstagramFeed({ tiendaId, slug, limit = 8 }) {
           /* Skeleton loader */
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {[...Array(limit)].map((_, i) => (
-              <div key={i} className="aspect-square rounded-[12px] bg-white/5 animate-pulse" />
+              <div key={i} className="aspect-square rounded-[12px] bg-[var(--color-background-primary)]/5 animate-pulse" />
             ))}
           </div>
         ) : error ? (
           /* Error state */
           <div className="text-center py-16">
-            <p className="text-white/30 text-[0.85rem]">
+            <p className="text-[var(--color-background-primary)]/30 text-[0.85rem]">
               No se pudo cargar el feed de Instagram.
             </p>
           </div>
@@ -152,7 +160,7 @@ export default function InstagramFeed({ tiendaId, slug, limit = 8 }) {
 
                   {/* Caption preview */}
                   {post.caption && (
-                    <p className="text-white text-[0.7rem] leading-[1.5] text-center line-clamp-3 max-w-[180px]">
+                    <p className="text-[var(--color-background-primary)] text-[0.7rem] leading-[1.5] text-center line-clamp-3 max-w-[180px]">
                       {post.caption}
                     </p>
                   )}
@@ -187,7 +195,7 @@ export default function InstagramFeed({ tiendaId, slug, limit = 8 }) {
               href="https://instagram.com/floresdel.corazon"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 bg-transparent border border-rosa/40 text-rosa text-[0.8rem] font-bold tracking-[0.1em] uppercase py-3 px-8 rounded-full transition-all duration-300 ease-spring hover:bg-rosa hover:text-white hover:scale-105 hover:border-rosa"
+              className="inline-flex items-center gap-3 bg-transparent border border-rosa/40 text-rosa text-[0.8rem] font-bold tracking-[0.1em] uppercase py-3 px-8 rounded-full transition-all duration-300 ease-spring hover:bg-rosa hover:text-[var(--color-background-primary)] hover:scale-105 hover:border-rosa"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="18" height="18" aria-hidden="true">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />

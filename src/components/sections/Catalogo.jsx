@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePublicCatalog } from '../../hooks/usePublicCatalog';
+import { useTenant } from '../../context/TenantContext.tsx';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import ProductoCard from '../ui/ProductoCard';
-import Modal from '../ui/Modal';
+import { fadeUp, staggerContainer, getMotionVariants } from '../../lib/motion';
 
 // ── Slug de la tienda actual ─────────────────────────────────────
-// En un futuro multi-tenant con rutas, esto vendría de useParams().
-// Por ahora lo definimos como constante para "Flores del Corazón".
-const STORE_SLUG = 'flores-del-corazon';
+// Ahora proviene dinámicamente del TenantContext en lugar de ser
+// una constante hardcodeada.
 
 const RANGES = {
   'all':     [0, Infinity],
@@ -16,9 +18,10 @@ const RANGES = {
 };
 
 export default function Catalogo() {
-  const { productos, loading, error, source } = usePublicCatalog(STORE_SLUG);
+  const { tenant } = useTenant();
+  const { productos, loading, error, source } = usePublicCatalog(tenant.slug);
   const [filtroActivo, setFiltroActivo] = useState('all');
-  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const shouldReduceMotion = useReducedMotion();
 
   // Filtrado derivado del estado (no duplicamos el array en otro useState)
   const productosFiltrados = useMemo(() => {
@@ -45,14 +48,7 @@ export default function Catalogo() {
         </p>
       </div>
 
-      {/* Indicador de fuente de datos (solo en desarrollo) */}
-      {import.meta.env.DEV && (
-        <div className={`max-w-[1180px] mx-auto mb-4 text-[0.65rem] font-mono px-3 py-1.5 rounded-full inline-flex items-center gap-2 ${source === 'supabase' ? 'bg-verde/10 text-verde' : 'bg-dorado/10 text-dorado'}`}>
-          <span className={`w-2 h-2 rounded-full ${source === 'supabase' ? 'bg-verde' : 'bg-dorado'}`}></span>
-          Datos: {source === 'supabase' ? '🔌 Supabase (live)' : '📁 Archivo local (fallback)'}
-          {error && <span className="text-rosa ml-2">⚠ {error}</span>}
-        </div>
-      )}
+
 
       {/* Filtros por presupuesto */}
       <div className="max-w-[1180px] mx-auto mb-10 flex items-center gap-4 flex-wrap" role="group" aria-label="Filtrar por presupuesto">
@@ -73,7 +69,7 @@ export default function Catalogo() {
               onClick={() => setFiltroActivo(btn.key)}
               className={`py-[0.38rem] px-4 rounded-full border-[1.5px] font-body text-[0.78rem] transition-all duration-200 ease-spring disabled:opacity-40 disabled:cursor-not-allowed
                 ${filtroActivo === btn.key 
-                  ? 'bg-verde border-verde text-white font-semibold scale-[1.04]' 
+                  ? 'bg-verde border-verde text-[var(--color-background-primary)] font-semibold scale-[1.04]' 
                   : 'border-verde/[.25] text-texto-muted hover:border-verde hover:text-verde'
                 }
               `}
@@ -88,35 +84,44 @@ export default function Catalogo() {
       {loading ? (
         <div className="max-w-[1180px] mx-auto grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white rounded-card overflow-hidden animate-pulse">
-              <div className="h-[280px] bg-texto-muted/10"></div>
-              <div className="p-5 space-y-3">
-                <div className="h-4 bg-texto-muted/10 rounded w-3/4"></div>
-                <div className="h-3 bg-texto-muted/10 rounded w-1/2"></div>
-                <div className="h-8 bg-texto-muted/10 rounded-full w-1/3 mt-4"></div>
+            <div key={i} className="bg-blanco rounded-card overflow-hidden shadow-card animate-pulse">
+              <div className="relative aspect-[4/3] bg-[var(--color-border-secondary)]"></div>
+              <div className="p-[1.3rem_1.4rem_1.5rem]">
+                <div className="h-[1.25rem] bg-[var(--color-border-secondary)] rounded w-3/4 mb-[0.4rem]"></div>
+                <div className="h-[0.8rem] bg-[var(--color-border-secondary)] rounded w-full mb-[1rem]"></div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="h-[1.4rem] bg-[var(--color-border-secondary)] rounded w-1/3"></div>
+                  <div className="h-[32px] w-[80px] bg-[var(--color-border-secondary)] rounded-lg"></div>
+                </div>
               </div>
             </div>
           ))}
         </div>
       ) : productosFiltrados.length > 0 ? (
-        <div className="max-w-[1180px] mx-auto grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6">
-          {productosFiltrados.map(prod => (
-            <div key={prod.id} onClick={() => setProductoSeleccionado(prod)}>
-              <ProductoCard producto={prod} />
-            </div>
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-50px' }}
+          variants={getMotionVariants(staggerContainer, shouldReduceMotion)}
+          className="max-w-[1180px] mx-auto grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6"
+        >
+          {productosFiltrados.map((prod, i) => (
+            <motion.div 
+              key={prod.id} 
+              variants={getMotionVariants(fadeUp, shouldReduceMotion)}
+            >
+              <Link to={`/producto/${prod.slug}`} className="block h-full">
+                <ProductoCard producto={prod} priority={i < 4} />
+              </Link>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       ) : (
         <p className="text-center py-12 px-6 text-[0.9rem] text-texto-muted max-w-[500px] mx-auto">
           No hay arreglos en ese rango ahora mismo. <a href="#" className="text-verde underline">Consúltanos por WhatsApp</a> y encontramos algo para ti.
         </p>
       )}
 
-      <Modal 
-        isOpen={!!productoSeleccionado} 
-        onClose={() => setProductoSeleccionado(null)} 
-        producto={productoSeleccionado} 
-      />
     </section>
   );
 }

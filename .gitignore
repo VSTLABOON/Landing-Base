@@ -18,3 +18,10 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Tools, Scripts & Agent folders (Security Protection)
+.agents/
+.claude/
+scratch/
+setup_db.mjs
+skills-lock.json

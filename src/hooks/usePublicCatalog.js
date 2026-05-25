@@ -14,7 +14,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { productos as productosLocales } from '../data/floreria';
+import { logger } from '../lib/logger';
+
 
 /**
  * Transforma una fila de la tabla `productos` de Supabase
@@ -26,7 +27,8 @@ import { productos as productosLocales } from '../data/floreria';
  */
 function mapRow(row) {
   return {
-    id:         row.slug ?? row.id,
+    id:         row.id,
+    slug:       row.slug ?? row.id,
     name:       row.nombre ?? row.name,
     short:      row.descripcion_corta ?? row.short ?? '',
     precio:     row.precio_label ?? row.precio ?? '',
@@ -66,18 +68,22 @@ export function usePublicCatalog(slug, options = {}) {
   const [error, setError] = useState(null);
   const [source, setSource] = useState('local');
 
-  const fetchCatalog = useCallback(async () => {
-    let cancelled = false;
+  const fetchCatalog = useCallback(async (abortSignal) => {
     setLoading(true);
     setError(null);
 
     try {
       // ── Paso 1: Resolver slug → tienda ────────────────────
-      const { data: tiendaData, error: tiendaError } = await supabase
+      let queryTienda = supabase
         .from('tiendas')
         .select('*')
-        .eq('slug', slug)
-        .single();
+        .eq('slug', slug);
+
+      if (abortSignal) {
+        queryTienda = queryTienda.abortSignal(abortSignal);
+      }
+
+      const { data: tiendaData, error: tiendaError } = await queryTienda.single();
 
       if (tiendaError) {
         throw new Error(
@@ -85,25 +91,29 @@ export function usePublicCatalog(slug, options = {}) {
         );
       }
 
-      if (cancelled) return;
+      if (abortSignal?.aborted) return;
       setTienda(tiendaData);
 
       // ── Paso 2: Fetch productos de esa tienda ─────────────
       // RLS ya filtra `disponible = true` a nivel de base de datos,
       // pero aplicamos el filtro aquí también como defensa en profundidad.
-      let query = supabase
+      let queryProd = supabase
         .from('productos')
         .select('*')
         .eq('tienda_id', tiendaData.id)
         .eq('disponible', true)
-        .order('sort_order', { ascending: true });
+        .order('created_at', { ascending: false });
 
       // Filtro opcional por categoría
       if (category) {
-        query = query.eq('categoria', category);
+        queryProd = queryProd.eq('categoria', category);
       }
 
-      const { data: productosData, error: productosError } = await query;
+      if (abortSignal) {
+        queryProd = queryProd.abortSignal(abortSignal);
+      }
+
+      const { data: productosData, error: productosError } = await queryProd;
 
       if (productosError) {
         throw new Error(
@@ -111,43 +121,41 @@ export function usePublicCatalog(slug, options = {}) {
         );
       }
 
-      if (cancelled) return;
+      if (abortSignal?.aborted) return;
 
       if (productosData && productosData.length > 0) {
         setProductos(productosData.map(mapRow));
         setSource('supabase');
       } else {
         // Tabla vacía para esta tienda — usar fallback
-        console.warn(
+        logger.warn(
           `⚠️ [usePublicCatalog] Sin productos en Supabase para "${slug}". Usando datos locales.`
         );
-        setProductos(productosLocales);
+        setProductos([]);
         setSource('local');
       }
     } catch (err) {
-      if (!cancelled) {
-        console.warn(
-          `⚠️ [usePublicCatalog] Fallback a datos locales. Razón: ${err.message}`
-        );
-        setProductos(productosLocales);
-        setSource('local');
-        setError(err.message);
+      if (err instanceof Error && (err.name === 'AbortError' || abortSignal?.aborted)) {
+        return;
       }
+      logger.warn(
+        `⚠️ [usePublicCatalog] Fallback a array vacío. Razón: ${err instanceof Error ? err.message : String(err)}`
+      );
+      setProductos([]);
+      setSource('local');
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      if (!cancelled) {
+      if (!abortSignal?.aborted) {
         setLoading(false);
       }
     }
-
-    return () => {
-      cancelled = true;
-    };
   }, [slug, category]);
 
   useEffect(() => {
-    const cleanup = fetchCatalog();
+    const controller = new AbortController();
+    fetchCatalog(controller.signal);
     return () => {
-      if (typeof cleanup === 'function') cleanup();
+      controller.abort();
     };
   }, [fetchCatalog]);
 

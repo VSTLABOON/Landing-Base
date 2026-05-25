@@ -1,8 +1,28 @@
 import { useState, useEffect } from 'react';
+import { useTenant } from '../../context/TenantContext.tsx';
+import { useAuth } from '../../context/AuthContext.tsx';
+
+// ── Roles que acceden al panel de administración ────────────────
+const ADMIN_ROLES = ['superadmin', 'dueño', 'empleado'];
+
+// ── Resuelve el CTA del header según el estado de auth ──────────
+function getAuthCTA(session, profile) {
+  if (!session) {
+    return { label: 'Iniciar Sesión', href: '/login' };
+  }
+  if (profile?.rol && ADMIN_ROLES.includes(profile.rol)) {
+    return { label: 'Panel Admin', href: '/admin' };
+  }
+  return { label: 'Mi Cuenta', href: '/mi-cuenta' };
+}
 
 export default function Header() {
+  const { tenant } = useTenant();
+  const { session, profile } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const cta = getAuthCTA(session, profile);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -11,6 +31,14 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Separar el nombre de la tienda en dos partes para estilizar
+  // Ej: "Flores del Corazón" → "Flores" + "del Corazón"
+  const nameParts = tenant.nombre.split(' ');
+  const brandFirst = nameParts[0] || '';
+  const brandRest = nameParts.slice(1).join(' ') || '';
+
+  const navLinks = tenant.nav_links;
 
   return (
     <header 
@@ -24,20 +52,33 @@ export default function Header() {
     >
       <div className="max-w-[1200px] mx-auto flex items-center gap-8 py-[1.1rem] px-6">
         <a href="#hero" className="flex items-baseline gap-[0.4rem] mr-auto" aria-label="Inicio">
-          <span className="font-display text-[1.2rem] font-bold text-blanco">Flores</span>
-          <span className="font-script text-[1.5rem] text-rosa leading-none">del Corazón</span>
+          <span className="font-display text-[1.2rem] font-bold text-blanco">{brandFirst}</span>
+          <span className="font-script text-[1.5rem] text-rosa leading-none">{brandRest}</span>
         </a>
         
-        <nav className="hidden md:flex gap-8" aria-label="Navegación principal">
-          {['Catálogo', 'Servicios', 'Cobertura', 'Nosotros'].map((item) => (
+        <nav className="hidden md:flex items-center gap-8" aria-label="Navegación principal">
+          {navLinks.map((item) => (
             <a 
               key={item}
-              href={`#${item.toLowerCase()}`}
-              className="text-[0.8rem] tracking-[0.12em] uppercase text-white/[.55] hover:text-blanco transition-colors duration-200"
+              href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`}
+              className="text-[0.8rem] tracking-[0.12em] uppercase text-[var(--color-background-primary)]/[.55] hover:text-blanco transition-colors duration-200"
             >
               {item}
             </a>
           ))}
+
+          {/* ── CTA Auth — Desktop ────────────────────────────── */}
+          <a
+            id="header-auth-cta"
+            href={cta.href}
+            className="ml-2 px-5 py-[0.45rem] rounded-full text-[0.75rem] font-semibold tracking-[0.08em] uppercase
+              border border-white/[.2] text-blanco bg-[var(--color-background-primary)]/[.08]
+              hover:bg-rosa hover:border-rosa hover:text-[var(--color-background-primary)]
+              backdrop-blur-[6px] transition-all duration-300 ease-out
+              hover:shadow-[0_0_20px_rgba(217,79,110,0.25)]"
+          >
+            {cta.label}
+          </a>
         </nav>
 
         <button 
@@ -59,16 +100,31 @@ export default function Header() {
         aria-label="Menú móvil" 
         aria-hidden={!isMenuOpen}
       >
-        {['Catálogo', 'Servicios', 'Cobertura', 'Nosotros'].map((item) => (
+        {navLinks.map((item) => (
           <a 
             key={item}
-            href={`#${item.toLowerCase()}`}
+            href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`}
             onClick={() => setIsMenuOpen(false)}
-            className="py-[0.85rem] px-6 text-[0.9rem] tracking-[0.06em] text-white/[.65] hover:text-white hover:bg-white/[.04] transition-colors duration-200"
+            className="py-[0.85rem] px-6 text-[0.9rem] tracking-[0.06em] text-[var(--color-background-primary)]/[.65] hover:text-[var(--color-background-primary)] hover:bg-[var(--color-background-primary)]/[.04] transition-colors duration-200"
           >
             {item}
           </a>
         ))}
+
+        {/* ── CTA Auth — Móvil ──────────────────────────────── */}
+        <div className="px-4 pt-3 mt-1 border-t border-white/[.06]">
+          <a
+            id="header-auth-cta-mobile"
+            href={cta.href}
+            onClick={() => setIsMenuOpen(false)}
+            className="block w-full text-center py-[0.7rem] rounded-xl text-[0.85rem] font-semibold tracking-[0.06em]
+              bg-rosa text-[var(--color-background-primary)]
+              hover:brightness-110 transition-all duration-300
+              shadow-[0_0_16px_rgba(217,79,110,0.2)]"
+          >
+            {cta.label}
+          </a>
+        </div>
       </nav>
     </header>
   );

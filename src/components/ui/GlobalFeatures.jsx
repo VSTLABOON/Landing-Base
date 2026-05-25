@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTenant } from '../../context/TenantContext.tsx';
+import { logger } from '../../lib/logger';
 
 export function Cursor() {
   const curRef = useRef(null);
@@ -78,31 +80,58 @@ export function ScrollProgress() {
 }
 
 export function CountdownBanner() {
+  const { tenant } = useTenant();
   const [timeLeft, setTimeLeft] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const bannerRef = useRef(null);
 
+  const evento = tenant.evento;
+
   useEffect(() => {
+    // Si no hay evento activo, no mostrar el banner
+    if (!evento || !evento.activo) {
+      document.documentElement.style.setProperty('--cd-height', '0px');
+      return;
+    }
+
+    const fecha = evento.fecha_fin;
+    logger.info('[EventBanner] fecha raw:', fecha);
+
+    // Validar que la fecha existe y no es un string vacío
+    if (!fecha || typeof fecha !== 'string' || fecha.trim() === '') {
+      document.documentElement.style.setProperty('--cd-height', '0px');
+      return;
+    }
+
+    // datetime-local produce "YYYY-MM-DDTHH:mm" sin timezone.
+    // Si no tiene zona horaria (Z, +, -), tratarla como hora local.
+    const normalizedFecha = (!fecha.includes('Z') && !fecha.includes('+') && !/T\d{2}:\d{2}.*-/.test(fecha))
+      ? fecha  // new Date() ya trata strings sin TZ como local en formato datetime-local
+      : fecha;
+
+    const fechaObj = new Date(normalizedFecha);
+    const esValida = !isNaN(fechaObj.getTime()) && fechaObj > new Date();
+
+    if (!esValida) {
+      document.documentElement.style.setProperty('--cd-height', '0px');
+      return;
+    }
+
     if (sessionStorage.getItem('cd-closed')) {
       document.documentElement.style.setProperty('--cd-height', '0px');
       return;
     }
     setIsVisible(true);
 
-    const getTarget = () => {
-      const now = new Date();
-      const year = now.getMonth() < 4 || (now.getMonth() === 4 && now.getDate() <= 10)
-        ? now.getFullYear()
-        : now.getFullYear() + 1;
-      return new Date(`${year}-05-10T08:00:00`);
-    };
-
+    const targetDate = fechaObj;
     const pad = n => String(n).padStart(2, '0');
 
     const tick = () => {
-      const diff = getTarget() - Date.now();
+      const diff = targetDate - Date.now();
       if (diff <= 0) {
-        setTimeLeft({ d: '¡HOY!', h: '--', m: '--', s: '--' });
+        setTimeLeft(null); // Fecha límite superada
+        setIsVisible(false);
+        document.documentElement.style.setProperty('--cd-height', '0px');
         return;
       }
       setTimeLeft({
@@ -117,7 +146,7 @@ export function CountdownBanner() {
     const timer = setInterval(tick, 1000);
     
     return () => clearInterval(timer);
-  }, []);
+  }, [evento]);
 
   useEffect(() => {
     if (isVisible && bannerRef.current) {
@@ -143,12 +172,12 @@ export function CountdownBanner() {
   return (
     <div 
       ref={bannerRef}
-      className="fixed top-0 left-0 right-0 z-[1000] bg-gradient-to-r from-verde-dark via-rosa to-dorado text-white flex items-center justify-center py-2 pr-12 pl-4 animate-fade-in shadow-md"
+      className="fixed top-0 left-0 right-0 z-[1000] bg-gradient-to-r from-verde-dark via-rosa to-dorado text-[var(--color-background-primary)] flex items-center justify-center py-2 pr-12 pl-4 animate-fade-in shadow-md"
     >
       <div className="flex items-center gap-4 flex-wrap justify-center">
         <div className="flex items-center gap-1.5 text-[0.72rem] font-semibold tracking-[0.1em] uppercase whitespace-nowrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          10 de mayo — Día de las Madres
+          {evento?.titulo || '¡Evento Especial!'}
         </div>
         <div className="flex items-center gap-1">
           {[
@@ -158,7 +187,7 @@ export function CountdownBanner() {
             { label: 'seg', val: timeLeft.s }
           ].map((u, i) => (
             <div key={u.label} className="flex items-center gap-1">
-              <div className="flex flex-col items-center bg-white/20 rounded-[6px] px-2 py-1 min-w-[38px]">
+              <div className="flex flex-col items-center bg-[var(--color-background-primary)]/20 rounded-[6px] px-2 py-1 min-w-[38px]">
                 <span className="font-display text-[1.1rem] font-bold leading-none tracking-[0.04em]">{u.val}</span>
                 <small className="text-[0.5rem] tracking-[0.12em] uppercase opacity-75 mt-0.5">{u.label}</small>
               </div>
@@ -167,7 +196,7 @@ export function CountdownBanner() {
           ))}
         </div>
       </div>
-      <button onClick={handleClose} aria-label="Cerrar banner" className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/20 text-[0.75rem] text-white flex items-center justify-center transition-colors hover:bg-white/35">
+      <button onClick={handleClose} aria-label="Cerrar banner" className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--color-background-primary)]/20 text-[0.75rem] text-[var(--color-background-primary)] flex items-center justify-center transition-colors hover:bg-[var(--color-background-primary)]/35">
         ✕
       </button>
     </div>

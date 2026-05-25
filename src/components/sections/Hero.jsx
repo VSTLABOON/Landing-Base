@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { meta } from '../../data/floreria';
+import { useTenant } from '../../context/TenantContext.tsx';
+import { motion } from 'framer-motion';
+import { LIMITS, UI_COLORS } from '../../lib/constants.ts';
 
 const SHAPES = [
   c => <svg viewBox="0 0 24 24" fill={c} stroke="none" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
   c => <svg viewBox="0 0 20 28" fill={c} stroke="none" aria-hidden="true"><ellipse cx="10" cy="14" rx="7" ry="12" transform="rotate(-15 10 14)"/></svg>,
   c => <svg viewBox="0 0 20 24" fill={c} stroke="none" aria-hidden="true"><path d="M10 2C4 2 2 8 2 13C2 19 6 22 10 22C14 22 18 19 18 13C18 8 16 2 10 2Z"/></svg>
 ];
-const COLS = ['rgba(240,160,180,.7)','rgba(255,255,255,.5)','rgba(217,79,110,.55)','rgba(196,154,60,.4)'];
-
 function Petals() {
   const [petals, setPetals] = useState([]);
 
@@ -17,7 +17,7 @@ function Petals() {
       sz: Math.random() * 13 + 6,
       dur: Math.random() * 7 + 5,
       delay: -(Math.random() * 12),
-      col: COLS[Math.floor(Math.random() * COLS.length)],
+      col: UI_COLORS.PETAL_COLORS[Math.floor(Math.random() * UI_COLORS.PETAL_COLORS.length)],
       sh: SHAPES[Math.floor(Math.random() * SHAPES.length)],
       left: Math.random() * 100,
       opacity: Math.random() * 0.22 + 0.06
@@ -55,7 +55,7 @@ function AnimatedCounter({ target, suffix = '' }) {
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) {
         let start = 0;
-        const duration = 2000;
+        const duration = LIMITS.HERO_COUNTER_ANIMATION_MS;
         const startTime = performance.now();
 
         const animate = (currentTime) => {
@@ -80,114 +80,156 @@ function AnimatedCounter({ target, suffix = '' }) {
     return () => observer.disconnect();
   }, [target]);
 
-  return <span ref={ref} className="font-display font-bold text-[clamp(1.8rem,4vw,2.5rem)] text-white">{count}{suffix}</span>;
+  return <span ref={ref} className="font-display font-bold text-[clamp(1.8rem,4vw,2.5rem)] text-[var(--color-background-primary)]">{count}{suffix}</span>;
 }
 
 export default function Hero() {
+  const { tenant } = useTenant();
+
   return (
     <>
       <section id="hero" aria-label="Inicio" className="relative min-h-[100svh] flex flex-col justify-center items-center text-center overflow-hidden pt-[var(--cd-height,0px)]">
         {/* Background */}
         <div id="hero-bg" className="absolute inset-0 z-[-1]">
-          <img 
-            src="img/stranger-things.jpeg" 
-            alt="Arreglo floral de rosas" 
-            id="hero-img"
-            fetchPriority="high"
-            className="w-full h-full object-cover transform scale-105 transition-transform duration-[20s]"
-          />
+          {(tenant.secciones?.hero?.imagen_fondo) ? (
+            <img 
+              src={tenant.secciones.hero.imagen_fondo} 
+              alt={`${tenant.nombre} - Hero`} 
+              id="hero-img"
+              fetchpriority="high"
+              decoding="async"
+              className="w-full h-full object-cover transform scale-105 transition-transform duration-[20s]"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-verde-dark via-negro to-rosa/20" />
+          )}
           <div id="hero-overlay" className="absolute inset-0 bg-gradient-to-b from-negro-soft/40 via-negro/60 to-negro" />
         </div>
 
         <Petals />
 
         <div className="relative z-10 w-full max-w-[800px] px-6 mt-16">
-          <div className="flex items-center justify-center gap-4 mb-6 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+            className="flex items-center justify-center gap-4 mb-6"
+          >
             <span className="h-[1px] w-8 bg-rosa/50"></span>
             <span className="text-[0.75rem] font-bold tracking-[0.2em] uppercase text-rosa-light">
-              Envíos a domicilio · {meta.ciudad}
+              Envíos a domicilio · {tenant.ciudad}
             </span>
             <span className="h-[1px] w-8 bg-rosa/50"></span>
-          </div>
+          </motion.div>
           
-          <h1 className="font-display text-[clamp(3rem,8vw,6rem)] leading-[1] font-bold text-white mb-6 animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            <span className="block mb-2">Flores que</span>
-            <em className="font-script font-normal text-rosa text-[1.2em] italic pr-4">enamoran</em>
-          </h1>
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+            className="font-display text-[clamp(3rem,8vw,6rem)] leading-[1] font-bold text-[var(--color-background-primary)] mb-6"
+          >
+            <span className="block mb-2">{tenant.secciones?.hero?.titulo || 'Flores que'}</span>
+            <em className="font-script font-normal text-rosa text-[1.2em] italic pr-4">{tenant.secciones?.hero?.titulo_italic || 'enamoran'}</em>
+          </motion.h1>
           
-          <p className="text-[1rem] md:text-[1.1rem] text-white/70 leading-[1.6] max-w-[500px] mx-auto mb-10 font-light animate-fade-up" style={{ animationDelay: '0.3s' }}>
-            Llegamos a toda el {meta.areaMetropolitana} en menos de 3 horas.
-          </p>
+          <motion.p 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.5, ease: "easeOut", delay: 0.3 }}
+            className="text-[1rem] md:text-[1.1rem] text-[var(--color-background-primary)]/70 leading-[1.6] max-w-[500px] mx-auto mb-10 font-light"
+          >
+            {tenant.secciones?.hero?.subtitulo || `Llegamos a toda el ${tenant.area_metropolitana} en menos de 3 horas.`}
+          </motion.p>
           
-          <div className="animate-fade-up" style={{ animationDelay: '0.4s' }}>
-            <a href="#catalogo" className="inline-flex items-center justify-center bg-transparent border-2 border-rosa hover:bg-rosa text-white text-[0.85rem] font-bold tracking-[0.1em] uppercase py-4 px-8 rounded-full transition-all duration-300 ease-spring hover:scale-105">
-              Ver catálogo
-            </a>
-          </div>
+
         </div>
 
         {/* Stats */}
-        <div className="absolute bottom-[4rem] left-0 right-0 z-10 px-6 hidden sm:flex justify-center animate-fade-up" style={{ animationDelay: '0.6s' }}>
-          <div className="flex items-center gap-8 md:gap-16 bg-negro/40 backdrop-blur-md border border-white/10 rounded-full py-4 px-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-50px' }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.6 }}
+          className="absolute bottom-[4.5rem] left-0 right-0 z-20 px-6 hidden sm:flex justify-center"
+        >
+          <div className="flex items-center gap-8 md:gap-16 bg-negro border border-white/10 rounded-full py-4 px-10">
             <div className="flex flex-col items-center">
-              <AnimatedCounter target={8} suffix="+" />
-              <span className="text-[0.65rem] tracking-[0.1em] uppercase text-white/50 mt-1">Años de experiencia</span>
+              <AnimatedCounter target={Math.max(0, new Date().getFullYear() - (tenant.anio_fundacion || new Date().getFullYear()))} suffix="+" />
+              <span className="text-[0.65rem] tracking-[0.1em] uppercase text-[var(--color-background-primary)]/50 mt-1">Años de experiencia</span>
             </div>
-            <div className="w-[1px] h-12 bg-white/10" aria-hidden="true"></div>
+            <div className="w-[1px] h-12 bg-[var(--color-background-primary)]/10" aria-hidden="true"></div>
             <div className="flex flex-col items-center">
               <AnimatedCounter target={2000} suffix="+" />
-              <span className="text-[0.65rem] tracking-[0.1em] uppercase text-white/50 mt-1">Entregas realizadas</span>
+              <span className="text-[0.65rem] tracking-[0.1em] uppercase text-[var(--color-background-primary)]/50 mt-1">Entregas realizadas</span>
             </div>
-            <div className="w-[1px] h-12 bg-white/10" aria-hidden="true"></div>
+            <div className="w-[1px] h-12 bg-[var(--color-background-primary)]/10" aria-hidden="true"></div>
             <div className="flex flex-col items-center">
               <AnimatedCounter target={3} suffix="h" />
-              <span className="text-[0.65rem] tracking-[0.1em] uppercase text-white/50 mt-1">Entrega express</span>
+              <span className="text-[0.65rem] tracking-[0.1em] uppercase text-[var(--color-background-primary)]/50 mt-1">Entrega express</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-fade-up" style={{ animationDelay: '0.8s' }} aria-hidden="true">
-          <div className="w-[1px] h-12 bg-gradient-to-b from-rosa to-transparent animate-[pulse_2s_infinite]"></div>
-          <span className="text-[0.6rem] tracking-[0.2em] uppercase text-white/40">scroll</span>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-50px' }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.8 }}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 flex sm:hidden flex-col items-center gap-2" aria-hidden="true"
+        >
+          <div className="w-[1px] h-6 bg-gradient-to-b from-rosa to-transparent animate-[pulse_2s_infinite]"></div>
+          <span className="text-[0.6rem] tracking-[0.2em] uppercase text-[var(--color-background-primary)]/40">scroll</span>
+        </motion.div>
       </section>
 
       {/* Trust Bar (Como región justo después de Hero) */}
       <div id="trust-bar" role="region" aria-label="Nuestras promesas" className="bg-negro border-b border-white/5 py-8 px-6">
-        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
-          <div className="flex items-center gap-4 flex-1 animate-fade-up">
+        <motion.div 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-50px' }}
+          variants={{
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+          }}
+          className="max-w-[1200px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4"
+        >
+          <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }} className="flex items-center gap-4 flex-1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-8 h-8 text-rosa shrink-0" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             <div>
-              <strong className="block text-[0.85rem] font-semibold text-white">Entrega en 3 horas</strong>
-              <span className="text-[0.75rem] text-white/50">Pedidos express todos los días</span>
+              <strong className="block text-[0.85rem] font-semibold text-[var(--color-background-primary)]">{tenant.secciones?.hero?.trust_bar_1 || 'Entrega en 3 horas'}</strong>
+              <span className="text-[0.75rem] text-[var(--color-background-primary)]/50">Pedidos express todos los días</span>
             </div>
-          </div>
-          <div className="hidden md:block w-[1px] h-10 bg-white/10 shrink-0" aria-hidden="true"></div>
-          <div className="flex items-center gap-4 flex-1 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+          </motion.div>
+          <div className="hidden md:block w-[1px] h-10 bg-[var(--color-background-primary)]/10 shrink-0" aria-hidden="true"></div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }} className="flex items-center gap-4 flex-1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-8 h-8 text-rosa shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2c-1.5 0-2.8.7-3.6 1.8A3 3 0 0 0 4.2 8C2.7 8.8 2 10.3 2 12c0 1.5.7 2.8 1.8 3.6a3 3 0 0 0 4.2 4.2C8.8 21.3 10.3 22 12 22c1.5 0 2.8-.7 3.6-1.8a3 3 0 0 0 4.2-4.2c1.1-1 1.8-2.5 1.8-4.2 0-1.5-.7-2.8-1.8-3.6a3 3 0 0 0-4.2-4.2C14.8 2.7 13.5 2 12 2z"/></svg>
             <div>
-              <strong className="block text-[0.85rem] font-semibold text-white">Flores del día</strong>
-              <span className="text-[0.75rem] text-white/50">Cortadas y preparadas frescas</span>
+              <strong className="block text-[0.85rem] font-semibold text-[var(--color-background-primary)]">Flores del día</strong>
+              <span className="text-[0.75rem] text-[var(--color-background-primary)]/50">Cortadas y preparadas frescas</span>
             </div>
-          </div>
-          <div className="hidden md:block w-[1px] h-10 bg-white/10 shrink-0" aria-hidden="true"></div>
-          <div className="flex items-center gap-4 flex-1 animate-fade-up" style={{ animationDelay: '0.2s' }}>
+          </motion.div>
+          <div className="hidden md:block w-[1px] h-10 bg-[var(--color-background-primary)]/10 shrink-0" aria-hidden="true"></div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }} className="flex items-center gap-4 flex-1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-8 h-8 text-rosa shrink-0" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <div>
-              <strong className="block text-[0.85rem] font-semibold text-white">Pago seguro</strong>
-              <span className="text-[0.75rem] text-white/50">Transferencia, tarjeta o efectivo</span>
+              <strong className="block text-[0.85rem] font-semibold text-[var(--color-background-primary)]">Pago seguro</strong>
+              <span className="text-[0.75rem] text-[var(--color-background-primary)]/50">Transferencia, tarjeta o efectivo</span>
             </div>
-          </div>
-          <div className="hidden md:block w-[1px] h-10 bg-white/10 shrink-0" aria-hidden="true"></div>
-          <div className="flex items-center gap-4 flex-1 animate-fade-up" style={{ animationDelay: '0.3s' }}>
+          </motion.div>
+          <div className="hidden md:block w-[1px] h-10 bg-[var(--color-background-primary)]/10 shrink-0" aria-hidden="true"></div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } }} className="flex items-center gap-4 flex-1">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-8 h-8 text-rosa shrink-0" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <div>
-              <strong className="block text-[0.85rem] font-semibold text-white">Tarjeta personalizada</strong>
-              <span className="text-[0.75rem] text-white/50">Incluida en cada arreglo</span>
+              <strong className="block text-[0.85rem] font-semibold text-[var(--color-background-primary)]">Tarjeta personalizada</strong>
+              <span className="text-[0.75rem] text-[var(--color-background-primary)]/50">Incluida en cada arreglo</span>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </>
   );

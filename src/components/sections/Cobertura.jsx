@@ -1,7 +1,9 @@
-import { meta } from '../../data/floreria';
+import { useTenant } from '../../context/TenantContext.tsx';
+import { LIMITS } from '../../lib/constants.ts';
 
 export default function Cobertura() {
-  const colonias = meta.colonias || [`${meta.ciudad} Centro`, 'Zona Norte', 'Zona Sur', 'Zona Este', 'Zona Oeste'];
+  const { tenant } = useTenant();
+  const colonias = tenant.colonias;
 
   return (
     <section id="cobertura" className="bg-crema pt-[7rem] px-6 pb-[7rem]">
@@ -15,8 +17,8 @@ export default function Cobertura() {
             Llegamos <em className="italic text-rosa not-italic">a tu puerta</em>
           </h2>
           <p className="text-[0.9rem] leading-[1.75] text-texto-muted mb-[1.6rem]">
-            Costo de envío <strong>$50 MXN</strong> en toda la zona metropolitana.<br/>
-            Pedidos express en menos de 3 horas.
+            Costo de envío <strong>${tenant.envio_costo} MXN</strong> en toda la zona metropolitana.<br/>
+            Pedidos express en {LIMITS.EXPRESS_DELIVERY_TEXT}.
           </p>
           
           <div className="flex flex-wrap gap-2 mt-4">
@@ -34,8 +36,8 @@ export default function Cobertura() {
         
         <div className="rounded-[18px] overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.12)] h-[400px] border border-black/5 bg-crema-dark">
           <iframe 
-            src={meta.mapaUrl}
-            width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`Mapa área de cobertura ${meta.ciudad}`}>
+            src={tenant.mapa_url}
+            width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title={`Mapa área de cobertura ${tenant.ciudad}`}>
           </iframe>
         </div>
       </div>
