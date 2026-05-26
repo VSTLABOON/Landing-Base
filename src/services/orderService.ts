@@ -56,10 +56,12 @@ export async function createGuestOrder(
     p_total: checkout.total,
     p_datos_envio: shipping,
     p_items: itemsPayload,
+    p_costo_envio: checkout.shippingCost,
   });
 
   if (error) {
-    throw new Error(`Error al crear el pedido: ${error.message}`);
+    logger.error('Error al crear pedido en RPC:', error);
+    throw new Error('No se pudo procesar tu pedido. Por favor, intenta de nuevo más tarde.');
   }
 
   return { success: true, orderId: data };

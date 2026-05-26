@@ -30,6 +30,13 @@ export default function GuestTrackingPage() {
   
   const [order, setOrder] = useState<any>(null);
 
+  const escapeSqlWildcards = (str: string) => {
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_');
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orderNumber || !phoneNumber) {
@@ -49,6 +56,12 @@ export default function GuestTrackingPage() {
         throw new Error('Número de pedido inválido.');
       }
 
+      if (cleanPhone.length < 8) {
+        throw new Error('El teléfono ingresado es inválido (debe tener al menos 8 dígitos).');
+      }
+
+      const escapedOrderNumber = escapeSqlWildcards(cleanOrderNumber);
+
       // Buscamos el pedido usando LIKE para el ID (ya que el número es el inicio del UUID)
       const { data, error: fetchError } = await supabase
         .from('pedidos')
@@ -60,7 +73,7 @@ export default function GuestTrackingPage() {
           )
         `)
         .eq('tienda_id', tenant.id)
-        .ilike('id', `${cleanOrderNumber}%`);
+        .ilike('id', `${escapedOrderNumber}%`);
 
       if (fetchError) throw fetchError;
 

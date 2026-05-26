@@ -401,18 +401,32 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     // ═════════════════════════════════════════════════════════════
-    // PASO 5.5: PREVENIR ORDER HIJACKING (Validar total vs DB)
+    // PASO 5.5: PREVENIR ORDER HIJACKING & APLICAR COSTO DE ENVÍO
     // ═════════════════════════════════════════════════════════════
     if (order_id) {
       const { data: orderDb, error: orderErr } = await supabaseAdmin
         .from("pedidos")
-        .select("id, total")
+        .select("id, total, costo_envio")
         .eq("id", order_id)
         .eq("tienda_id", tenant_id)
         .single();
 
       if (orderErr || !orderDb) {
         return jsonResponse({ error: "El pedido especificado no existe o no pertenece a esta tienda." }, 404, origin);
+      }
+
+      const shippingCostDb = Number(orderDb.costo_envio || 0);
+
+      // Inyectar costo de envío si existe
+      if (shippingCostDb > 0) {
+        line_items.push({
+          price_data: {
+            currency,
+            product_data: { name: "Costo de Envío" },
+            unit_amount: Math.round(shippingCostDb * 100),
+          },
+          quantity: 1,
+        });
       }
 
       const calculatedTotalCents = line_items.reduce((acc, li) => acc + li.price_data.unit_amount * li.quantity, 0);

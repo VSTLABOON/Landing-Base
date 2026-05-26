@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌸 Landing-Base
+# 🌸 BotaniQ
 
 ### Plataforma SaaS Multi-Tenant para Negocios Locales
 
@@ -23,7 +23,7 @@ Una base de código. Infinitos tenants. Tres niveles de monetización.
 
 ## 🎯 Propuesta de Valor y Modelo de Negocio
 
-Landing-Base es una **plataforma SaaS (Software as a Service)** diseñada para que negocios locales — con foco inicial en **florerías** — tengan presencia digital profesional sin necesidad de conocimientos técnicos. Un solo despliegue sirve a múltiples clientes (tiendas) de forma aislada y segura.
+BotaniQ es una **plataforma SaaS (Software as a Service)** diseñada para que negocios locales — con foco inicial en **florerías** — tengan presencia digital profesional sin necesidad de conocimientos técnicos. Un solo despliegue sirve a múltiples clientes (tiendas) de forma aislada y segura.
 
 ### El Problema
 
@@ -95,7 +95,7 @@ El `TenantContext` resuelve la identidad de la tienda dinámicamente según el h
 flowchart TD
     A["window.location.hostname"] --> B{¿localhost?}
     B -->|Sí| C["VITE_STORE_SLUG → slug"]
-    B -->|No| D{"¿*.landing-base.com?"}
+    B -->|No| D{"¿*.botaniq.com?"}
     D -->|Sí| E["Extraer subdominio → slug"]
     D -->|No| F["Normalizar hostname → custom_domain"]
     C --> G["SELECT * FROM tiendas WHERE slug = $1"]
@@ -108,7 +108,7 @@ flowchart TD
 ### Estructura del Proyecto
 
 ```
-Landing-Base/
+BotaniQ/
 ├── src/
 │   ├── components/
 │   │   ├── FeatureGate.tsx          # Control de acceso por nivel SaaS
@@ -176,7 +176,7 @@ El webhook **no puede usar JWT** porque Stripe no envía tokens de sesión. En s
 
 ### 2. Price Hardening y Patrón "Order-First" (Transacciones Atómicas)
 
-El sistema de pagos de Landing-Base utiliza un patrón **Order-First** para garantizar trazabilidad absoluta y evitar la pérdida de pedidos pagados (race conditions) o el descarte de clientes en Guest Checkout.
+El sistema de pagos de BotaniQ utiliza un patrón **Order-First** para garantizar trazabilidad absoluta y evitar la pérdida de pedidos pagados (race conditions) o el descarte de clientes en Guest Checkout.
 
 ```mermaid
 sequenceDiagram
@@ -227,6 +227,22 @@ Toda la plataforma — desde el Storefront hasta el Superadmin — se rige bajo 
 | `empleado` | `/admin/*` | Pedidos y catálogo, sin acceso a configuración crítica |
 | `repartidor` | App dedicada | Entregas asignadas + GPS (Nivel 3) |
 | `cliente` | `/mi-cuenta` | Historial de pedidos y tracking (Nivel 2+) |
+
+### 6. Medidas de Seguridad Auditadas (OWASP Top 10 Hardening)
+
+Tras realizar una auditoría de seguridad integral y aplicar medidas de hardening alineadas con **OWASP Top 10**, se incorporaron los siguientes controles en el core del sistema:
+
+* **Mitigación de XSS (Defensa en Profundidad - OWASP A03:2021)**: 
+  * Se auditó el código del cliente para garantizar la ausencia de `dangerouslySetInnerHTML`. React escapa por defecto todos los datos interpolados en JSX (`{variable}` como `textContent`).
+  * Se implementó validación de estructura de tipos estricta usando **Zod** en formularios críticos (`PedidoEnvioSchema`), garantizando límites de longitud de texto y formatos regex seguros (como números de teléfono de 10-15 dígitos).
+* **Escape de Comodines SQL (OWASP A03:2021 - Injection)**:
+  * El motor de búsqueda parcial en la página pública de rastreo de pedidos (`GuestTrackingPage.tsx`) ahora realiza un saneamiento estricto de comodines SQL en el orden correcto (`\` → `\\`, `%` → `\%`, `_` → `\_`) antes de invocar la consulta de Supabase PostgREST, previniendo abusos de búsqueda de patrones y robo de información.
+* **Prevención de Fugas de Información Sensible (OWASP A05:2021 - Security Misconfiguration)**:
+  * Se eliminó el uso de mensajes de error de excepción de base de datos (`error.message`) hacia el cliente en `orderService.ts` y `teamService.ts`. Los errores detallados de PostgREST y funciones internas se registran de forma segura en consola/servidor mediante el módulo `logger`, exponiendo únicamente mensajes amigables y genéricos al usuario final.
+* **Allowlist para Google Maps (OWASP A01:2021 - Broken Access Control / SSRF / Iframe Injection)**:
+  * El enlace de cobertura de mapa (`mapa_url`) de los ajustes del admin se valida rigurosamente en el esquema Zod contra una **allowlist de dominios autorizados de Google Maps**. Esto evita ataques de inyección en `src` de iframe (esquemas `javascript:`, `data:` o dominios maliciosos).
+* **BOLA / IDOR Protection (OWASP A01:2021)**:
+  * El rastreo público requiere una coincidencia de seguridad obligatoria entre el ID parcial de pedido y el número telefónico del cliente registrado (con validación de longitud mínima de teléfono `>= 8` para evitar bypasses por inputs vacíos).
 
 ---
 
@@ -337,9 +353,9 @@ Todas las tablas tienen RLS habilitado. El aislamiento multi-tenant es **enforce
 ### 1. Instalación
 
 ```bash
-git clone https://github.com/tu-org/Landing-Base.git
-cd Landing-Base
-npm install
+git clone https://github.com/VSTLABOON/Landing-Base.git
+cd BotaniQ
+pnpm install
 ```
 
 ### 2. Variables de Entorno (Frontend)
@@ -369,9 +385,12 @@ supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
 
 ### 4. Ejecutar en Desarrollo
 
+> [!IMPORTANT]
+> El servidor de desarrollo de Vite está configurado en el archivo `vite.config.js` para correr obligatoriamente en el **puerto 3000** (`port: 3000, strictPort: true`), esto para alinearse con los enlaces de redirección configurados en Stripe y Supabase.
+
 ```bash
-# Frontend (Vite dev server)
-npm run dev
+# Frontend (Vite dev server corriendo en http://localhost:3000)
+pnpm dev
 
 # Edge Functions (en otra terminal)
 supabase functions serve
@@ -458,7 +477,7 @@ Proyecto propietario. Todos los derechos reservados.
 
 <div align="center">
 
-Arquitectura diseñada por el equipo de ingeniería de **Landing-Base**.
+Arquitectura diseñada por el equipo de ingeniería de **BotaniQ**.
 
 *Built with 🌸 for local businesses that deserve world-class technology.*
 

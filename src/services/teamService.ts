@@ -13,6 +13,7 @@
 
 import { supabase } from '../lib/supabaseClient';
 import type { UserRole } from '../types';
+import { logger } from '../lib/logger';
 
 // ── Interfaces del módulo ────────────────────────────────────────
 
@@ -46,7 +47,10 @@ export async function fetchTeamMembers(tiendaId: string): Promise<TeamMember[]> 
     .eq('tienda_id', tiendaId)
     .order('updated_at', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    logger.error('Error al obtener miembros del equipo:', error);
+    throw new Error('No se pudieron cargar los miembros del equipo. Intenta de nuevo más tarde.');
+  }
 
   // Mapear columnas de BD al tipo TeamMember.
   // 'email' no está en la tabla perfiles (vive en auth.users).
@@ -112,8 +116,8 @@ export async function createTeamMember(
   const data = await response.json();
 
   if (!response.ok) {
-    // Propagar el mensaje de error del servidor
-    throw new Error(data.error || `Error ${response.status} al crear el miembro.`);
+    logger.error(`Error ${response.status} de Edge Function al crear miembro:`, data.error);
+    throw new Error(data.error || 'No se pudo crear el miembro del equipo. Intenta de nuevo.');
   }
 
   return {
@@ -138,5 +142,8 @@ export async function deactivateTeamMember(memberId: string): Promise<void> {
     .delete()
     .eq('id', memberId);
 
-  if (error) throw error;
+  if (error) {
+    logger.error('Error al desactivar miembro del equipo:', error);
+    throw new Error('No se pudo desactivar el miembro del equipo. Intenta de nuevo.');
+  }
 }

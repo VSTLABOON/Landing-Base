@@ -8,6 +8,7 @@ import { ShoppingCart, MessageCircle } from 'lucide-react';
 import { UI_COLORS } from '../../lib/constants.ts';
 import { toast } from '../../store/toastStore.ts';
 import { logger } from '../../lib/logger';
+import { PedidoEnvioSchema } from '../../lib/schemas.ts';
 
 export default function CartDrawer() {
   const items = useCartStore((s) => s.items);
@@ -27,8 +28,13 @@ export default function CartDrawer() {
   const [checkoutError, setCheckoutError] = useState(null);
   const [formData, setFormData] = useState({
     nombre: '', telefono: '', fecha: '', direccion: '',
-    destinatario: '', notas: '', mensaje: ''
+    destinatario: '', notas: '', mensaje: '', zonaEnvio: ''
   });
+
+  const zones = tenant.zonas_envio || [];
+  const hasZones = zones.length > 0;
+  const selectedZone = hasZones ? zones.find(z => z.nombre === formData.zonaEnvio) : null;
+  const shippingCost = selectedZone ? selectedZone.costo : (hasZones ? 0 : (tenant.envio_costo || 0));
 
   useEffect(() => {
     if (profile) {
@@ -65,6 +71,30 @@ export default function CartDrawer() {
     }
     const { nombre, fecha, direccion, destinatario, telefono, notas, mensaje } = formData;
 
+    if (!nombre.trim()) {
+      return toast.error('El nombre del comprador es obligatorio.');
+    }
+
+    if (hasZones && !formData.zonaEnvio) {
+      return toast.error('Debes seleccionar una zona de envío.');
+    }
+
+    const shippingData = {
+      recipientName: destinatario,
+      recipientPhone: telefono,
+      deliveryAddress: direccion,
+      deliveryDate: fecha,
+      customMessage: mensaje,
+      zonaEnvio: formData.zonaEnvio || undefined,
+    };
+
+    const validation = PedidoEnvioSchema.safeParse(shippingData);
+    if (!validation.success) {
+      return toast.error(validation.error.issues[0].message);
+    }
+
+    const validatedShipping = validation.data;
+
     // ── 1. Registrar pedido en Supabase (estado: pendiente) ──────
     // Esto garantiza que el dueño vea el pedido en su dashboard
     // incluso si el cliente no completa la conversación por WhatsApp.
@@ -76,16 +106,10 @@ export default function CartDrawer() {
           items,
           subtotal,
           shippingData: null,
-          shippingCost: tenant.envio_costo || 0,
-          total: subtotal + (tenant.envio_costo || 0),
+          shippingCost,
+          total: subtotal + shippingCost,
         },
-        {
-          recipientName: destinatario,
-          recipientPhone: telefono,
-          deliveryAddress: direccion,
-          deliveryDate: fecha,
-          customMessage: mensaje,
-        },
+        validatedShipping,
         tenant.id
       );
       orderId = result.orderId;
@@ -97,15 +121,22 @@ export default function CartDrawer() {
     }
 
     // ── 2. Construir mensaje de WhatsApp ─────────────────────────
-    const [y,m,d] = fecha.split('-');
+    const subtotal = getSubtotal();
+    const [y,m,d] = validatedShipping.deliveryDate.split('-');
     const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
     const lines = ['Hola! Quiero hacer un pedido:','','-- Arreglos --'];
     items.forEach((it,i) => lines.push(`${i+1}. ${it.name} — ${it.variantName} x${it.quantity} ($${it.unitPrice*it.quantity})`));
-    lines.push('',`Total: $${getSubtotal()} MXN`,'',
+    lines.push('',`Total: $${subtotal + shippingCost} MXN`,'',
       `Entrega: ${Number(d)} de ${meses[Number(m)-1]} de ${y}`,
-      `Dirección: ${direccion}`, `Quién pide: ${nombre}`, `Para: ${destinatario}`);
+      `Dirección: ${validatedShipping.deliveryAddress}`);
+    
+    if (formData.zonaEnvio) {
+      lines.push(`Zona de envío: ${formData.zonaEnvio} ($${shippingCost} MXN)`);
+    }
+    
+    lines.push(`Quién pide: ${nombre}`, `Para: ${validatedShipping.recipientName}`);
     if (notas) lines.push(`Notas: ${notas}`);
-    if (mensaje) lines.push(`Tarjeta: "${mensaje}"`);
+    if (validatedShipping.customMessage) lines.push(`Tarjeta: "${validatedShipping.customMessage}"`);
     if (orderId) lines.push('', `ID de pedido: ${orderId.slice(0, 8).toUpperCase()}`);
     lines.push('','¡Gracias!');
 
@@ -121,12 +152,31 @@ export default function CartDrawer() {
   const handleCheckout = async () => {
     if (!items.length) return;
 
-    // ── Validación de campos obligatorios ───────────────────────
     const { nombre, fecha, direccion, destinatario, telefono, notas, mensaje } = formData;
-    if (!nombre.trim() || !fecha || !direccion.trim() || !destinatario.trim()) {
-      toast.error('Completa los campos obligatorios: nombre, fecha, dirección y destinatario.');
-      return;
+
+    if (!nombre.trim()) {
+      return toast.error('El nombre del comprador es obligatorio.');
     }
+
+    if (hasZones && !formData.zonaEnvio) {
+      return toast.error('Debes seleccionar una zona de envío.');
+    }
+
+    const shippingData = {
+      recipientName: destinatario,
+      recipientPhone: telefono,
+      deliveryAddress: direccion,
+      deliveryDate: fecha,
+      customMessage: mensaje,
+      zonaEnvio: formData.zonaEnvio || undefined,
+    };
+
+    const validation = PedidoEnvioSchema.safeParse(shippingData);
+    if (!validation.success) {
+      return toast.error(validation.error.issues[0].message);
+    }
+
+    const validatedShipping = validation.data;
 
     setCheckoutLoading(true); setCheckoutError(null); setCheckoutResult(null);
     try {
@@ -140,16 +190,10 @@ export default function CartDrawer() {
           items,
           subtotal,
           shippingData: null,
-          shippingCost: tenant.envio_costo || 0,
-          total: subtotal + (tenant.envio_costo || 0),
+          shippingCost,
+          total: subtotal + shippingCost,
         },
-        {
-          recipientName: destinatario,
-          recipientPhone: telefono,
-          deliveryAddress: direccion,
-          deliveryDate: fecha,
-          customMessage: mensaje,
-        },
+        validatedShipping,
         tenant.id
       );
 
@@ -273,6 +317,26 @@ export default function CartDrawer() {
               <label htmlFor="cd-direccion" className={LABEL}>Dirección de entrega *</label>
               <input type="text" id="cd-direccion" name="direccion" value={formData.direccion} onChange={handleChange} required placeholder="Calle, número, colonia" className={INPUT} />
             </div>
+            {hasZones && (
+              <div className="flex flex-col gap-1.5 animate-fade-up">
+                <label htmlFor="cd-zonaEnvio" className={LABEL}>Zona de envío *</label>
+                <select
+                  id="cd-zonaEnvio"
+                  name="zonaEnvio"
+                  value={formData.zonaEnvio}
+                  onChange={handleChange}
+                  required
+                  className={INPUT}
+                >
+                  <option value="" disabled className="text-white/40">-- Selecciona tu zona de envío --</option>
+                  {zones.map((z, idx) => (
+                    <option key={idx} value={z.nombre} className="bg-negro text-white">
+                      {z.nombre} (${z.costo} MXN)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="cd-destinatario" className={LABEL}>¿Para quién? *</label>
@@ -304,16 +368,27 @@ export default function CartDrawer() {
               <span className="text-xs text-[var(--color-background-primary)]/40">Subtotal</span>
               <span className="text-sm text-[var(--color-background-primary)]/70">${subtotal}</span>
             </div>
-            {(tenant.envio_costo > 0) && (
+            {hasZones ? (
               <div className="flex justify-between items-center text-[var(--color-background-primary)]">
-                <span className="text-xs text-[var(--color-background-primary)]/40">Envío</span>
-                <span className="text-sm text-[var(--color-background-primary)]/70">${tenant.envio_costo}</span>
+                <span className="text-xs text-[var(--color-background-primary)]/40">
+                  Envío {selectedZone ? `(${selectedZone.nombre})` : ''}
+                </span>
+                <span className="text-sm text-[var(--color-background-primary)]/70">
+                  {selectedZone ? `$${selectedZone.costo}` : 'Selecciona una zona'}
+                </span>
               </div>
+            ) : (
+              (tenant.envio_costo > 0) && (
+                <div className="flex justify-between items-center text-[var(--color-background-primary)]">
+                  <span className="text-xs text-[var(--color-background-primary)]/40">Envío</span>
+                  <span className="text-sm text-[var(--color-background-primary)]/70">${tenant.envio_costo}</span>
+                </div>
+              )
             )}
             <div className="h-px bg-white/5 my-1" />
             <div className="flex justify-between items-center text-[var(--color-background-primary)]">
               <span className="text-sm font-semibold text-[var(--color-background-primary)]/60">Total</span>
-              <span className="font-display text-2xl font-bold text-verde">${subtotal + (tenant.envio_costo || 0)}</span>
+              <span className="font-display text-2xl font-bold text-verde">${subtotal + shippingCost}</span>
             </div>
           </div>
           {checkoutResult?.success && (

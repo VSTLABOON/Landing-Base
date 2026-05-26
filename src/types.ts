@@ -56,6 +56,7 @@ export interface ShippingData {
   deliveryAddress: string;
   deliveryDate: string;    // ISO 8601
   customMessage: string;   // Dedicatoria en tarjeta impresa
+  zonaEnvio?: string;
 }
 
 // ── Tenant (Configuración Multi-tenant) ──────────────────────────
@@ -95,6 +96,7 @@ export interface TenantConfig {
   firma: string;
   envio_costo: number;
   colonias: string[];
+  zonas_envio?: { nombre: string; costo: number }[];
 
   // ── SaaS — Suscripción y Dominio ───────────────────────────────
   // Campos sincronizados con las columnas de la tabla `tiendas`.
@@ -104,6 +106,7 @@ export interface TenantConfig {
   currency: string;              // ISO 4217: 'MXN', 'USD', 'EUR', etc.
   created_at?: string | null;
   has_active_subscription?: boolean;
+  meta_title?: string | null;
 
   // Secciones Dinámicas desde config_ui
   servicios: any[];

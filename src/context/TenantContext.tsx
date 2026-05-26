@@ -148,6 +148,7 @@ const FALLBACK_TENANT: TenantConfig = {
   currency: 'MXN',
   created_at: null,
   has_active_subscription: false,
+  meta_title: null,
   // ── Secciones dinámicas ───────────────────────────────────────
   servicios: [],
   beneficios: [],
@@ -276,6 +277,7 @@ function mapRowToTenant(row: Record<string, unknown>): TenantConfig {
     currency:           (row.currency as string) ?? FALLBACK_TENANT.currency,
     created_at:         (row.created_at as string) ?? FALLBACK_TENANT.created_at,
     has_active_subscription: (row.has_active_subscription as boolean) ?? FALLBACK_TENANT.has_active_subscription,
+    meta_title:         (row.meta_title as string) ?? null,
 
     // Arrays extraídos del JSONB config_ui
     servicios:          configUi.servicios || [],
@@ -463,9 +465,20 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useTheming(tenant);
 
   useEffect(() => {
-    if (!tenant) return;
-    document.title = `${tenant.nombre} ✦ ${tenant.ciudad}`;
-  }, [tenant]);
+    const cleanEmojis = (text: string) => {
+      return text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
+    };
+
+    if (status === 'platform') {
+      document.title = 'BotaniQ — Crea tu tienda de flores online';
+    } else if (status === 'ready' && tenant) {
+      const fallbackTitle = `${tenant.nombre} — ${tenant.ciudad}`;
+      const titleToUse = tenant.meta_title ? tenant.meta_title : fallbackTitle;
+      document.title = cleanEmojis(titleToUse);
+    } else {
+      document.title = 'BotaniQ — Crea tu tienda de flores online';
+    }
+  }, [status, tenant]);
 
   /**
    * Mutación optimista con rollback automático.
@@ -528,6 +541,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         'mapa_url', 'direccion', 'whatsapp', 'wa_base', 'horarios', 'redes_sociales',
         'nav_links', 'campana', 'anio_fundacion', 'texto_nosotros',
         'firma', 'envio_costo', 'colonias',
+        'meta_title',
         // SaaS columns (read-only from admin, but included for completeness)
         'custom_domain', 'currency',
       ];

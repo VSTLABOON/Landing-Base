@@ -18,6 +18,7 @@ import { useTheming } from '../../hooks/useTheming';
 import { supabase } from '../../lib/supabaseClient';
 import { toast } from '../../store/toastStore';
 import { logger } from '../../lib/logger';
+import { TenantConfigSchema } from '../../lib/schemas';
 
 // --- Subcomponentes Extraídos ---
 import { TemaTab } from './components/config/TemaTab';
@@ -111,6 +112,8 @@ export default function AdminConfiguracion() {
   const [mapaUrl, setMapaUrl] = useState(tenant.mapa_url || '');
   const [direccion, setDireccion] = useState(tenant.direccion || '');
   const [colonias, setColonias] = useState(tenant.colonias?.join(', ') || '');
+  const [metaTitle, setMetaTitle] = useState(tenant.meta_title || '');
+  const [zonasEnvio, setZonasEnvio] = useState(tenant.zonas_envio || []);
 
   // Evento/Promoción
   const [eventoActivo, setEventoActivo] = useState(tenant.evento?.activo || false);
@@ -145,6 +148,8 @@ export default function AdminConfiguracion() {
       mapaUrl !== (tenant.mapa_url || '') ||
       direccion !== (tenant.direccion || '') ||
       colonias !== (tenant.colonias?.join(', ') || '') ||
+      metaTitle !== (tenant.meta_title || '') ||
+      JSON.stringify(zonasEnvio) !== JSON.stringify(tenant.zonas_envio || []) ||
       eventoActivo !== (tenant.evento?.activo || false) ||
       eventoTitulo !== (tenant.evento?.titulo || '') ||
       eventoProducto !== (tenant.evento?.producto || '') ||
@@ -158,7 +163,7 @@ export default function AdminConfiguracion() {
     );
   }, [
     colorPrimario, colorSecundario, colorAcento, fontFamily, logoPreview, sections,
-    textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias,
+    textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias, metaTitle,
     serviciosList, beneficiosList, testimoniosList, floresList, galeriaList, seccionesData,
     tenant
   ]);
@@ -176,6 +181,8 @@ export default function AdminConfiguracion() {
     setMapaUrl(tenant.mapa_url || '');
     setDireccion(tenant.direccion || '');
     setColonias(tenant.colonias?.join(', ') || '');
+    setMetaTitle(tenant.meta_title || '');
+    setZonasEnvio(tenant.zonas_envio || []);
     setEventoActivo(tenant.evento?.activo || false);
     setEventoTitulo(tenant.evento?.titulo || '');
     setEventoProducto(tenant.evento?.producto || '');
@@ -239,6 +246,7 @@ export default function AdminConfiguracion() {
         firma: firma,
         mapa_url: mapaUrl,
         colonias: colonias.split(',').map(c => c.trim()).filter(Boolean),
+        meta_title: metaTitle,
         evento: {
           activo: eventoActivo,
           titulo: eventoTitulo,
@@ -264,7 +272,7 @@ export default function AdminConfiguracion() {
     }
   }, [
     colorPrimario, colorSecundario, colorAcento, fontFamily, logoPreview, sections,
-    textoNosotros, anioFundacion, firma, mapaUrl, colonias,
+    textoNosotros, anioFundacion, firma, mapaUrl, colonias, metaTitle,
     eventoActivo, eventoTitulo, eventoProducto, eventoFechaFin,
     serviciosList, beneficiosList, testimoniosList, floresList, galeriaList, seccionesData
   ]);
@@ -317,20 +325,50 @@ export default function AdminConfiguracion() {
     
     setSaving(true);
 
+    const payloadToValidate = {
+      id: tenant.id,
+      slug: tenant.slug,
+      nombre: tenant.nombre,
+      color_primario:   colorPrimario,
+      color_secundario: colorSecundario,
+      color_acento:     colorAcento,
+      font_family:      fontFamily,
+      texto_nosotros:   textoNosotros,
+      anio_fundacion:   Number(anioFundacion),
+      firma:            firma,
+      mapa_url:         mapaUrl,
+      direccion:        direccion,
+      meta_title:       metaTitle,
+      zonas_envio:      zonasEnvio,
+    };
+
+    const validation = TenantConfigSchema.safeParse(payloadToValidate);
+    if (!validation.success) {
+      toast.error('Error de validación', {
+        message: validation.error.issues[0].message
+      });
+      setSaving(false);
+      return;
+    }
+
+    const validatedData = validation.data;
+
     try {
       await updateTenantConfig({
-        color_primario:   colorPrimario,
-        color_secundario: colorSecundario,
-        color_acento:     colorAcento,
+        color_primario:   validatedData.color_primario,
+        color_secundario: validatedData.color_secundario,
+        color_acento:     validatedData.color_acento,
         logo_url:         logoPreview,
         orden_secciones:  sections,
-        font_family:      fontFamily,
-        texto_nosotros:   textoNosotros,
-        anio_fundacion:   anioFundacion,
-        firma:            firma,
-        mapa_url:         mapaUrl,
-        direccion:        direccion,
+        font_family:      validatedData.font_family,
+        texto_nosotros:   validatedData.texto_nosotros,
+        anio_fundacion:   validatedData.anio_fundacion,
+        firma:            validatedData.firma,
+        mapa_url:         validatedData.mapa_url,
+        direccion:        validatedData.direccion,
         colonias:         colonias.split(',').map(c => c.trim()).filter(Boolean),
+        meta_title:       validatedData.meta_title,
+        zonas_envio:      validatedData.zonas_envio || [],
         servicios:        serviciosList,
         beneficios:       beneficiosList,
         testimonios:      testimoniosList,
@@ -363,7 +401,7 @@ export default function AdminConfiguracion() {
     }
   }, [
     colorPrimario, colorSecundario, colorAcento, logoPreview, sections, fontFamily,
-    textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias,
+    textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias, metaTitle,
     serviciosList, beneficiosList, testimoniosList, floresList, galeriaList, seccionesData,
     updateTenantConfig, hasUnsavedChanges
   ]);
@@ -502,8 +540,9 @@ export default function AdminConfiguracion() {
           {/* TAB: INFORMACIÓN GENERAL */}
           {activeTab === 'general' && (
             <GeneralTab
-              state={{ textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias, eventoActivo, eventoTitulo, eventoProducto, eventoFechaFin, openAccordions }}
-              actions={{ setTextoNosotros, setAnioFundacion, setFirma, setMapaUrl, setDireccion, setColonias, setEventoActivo, setEventoTitulo, setEventoProducto, setEventoFechaFin, onToggleAccordion: handleToggleAccordion }}
+              state={{ textoNosotros, anioFundacion, firma, mapaUrl, direccion, colonias, metaTitle, zonasEnvio, eventoActivo, eventoTitulo, eventoProducto, eventoFechaFin, openAccordions }}
+              actions={{ setTextoNosotros, setAnioFundacion, setFirma, setMapaUrl, setDireccion, setColonias, setMetaTitle, setZonasEnvio, setEventoActivo, setEventoTitulo, setEventoProducto, setEventoFechaFin, onToggleAccordion: handleToggleAccordion }}
+              tenant={tenant}
             />
           )}
 

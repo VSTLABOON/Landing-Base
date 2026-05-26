@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTenant } from '../../context/TenantContext.tsx';
 import { logger } from '../../lib/logger';
+import { X } from 'lucide-react';
 
 export function Cursor() {
   const curRef = useRef(null);
@@ -196,8 +197,8 @@ export function CountdownBanner() {
           ))}
         </div>
       </div>
-      <button onClick={handleClose} aria-label="Cerrar banner" className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--color-background-primary)]/20 text-[0.75rem] text-[var(--color-background-primary)] flex items-center justify-center transition-colors hover:bg-[var(--color-background-primary)]/35">
-        ✕
+      <button onClick={handleClose} aria-label="Cerrar banner" className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--color-background-primary)]/20 text-[var(--color-background-primary)] flex items-center justify-center transition-colors hover:bg-[var(--color-background-primary)]/35">
+        <X className="w-3 h-3 text-[var(--color-background-primary)]" />
       </button>
     </div>
   );

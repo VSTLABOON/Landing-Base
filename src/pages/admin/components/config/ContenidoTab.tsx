@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { SectionListEditor } from '../SectionListEditor';
 import { Accordion } from './SharedUI';
-import { LayoutTemplate, Upload, Loader2, Film, X, Link2, ChevronDown } from 'lucide-react';
+import { LayoutTemplate, Upload, Loader2, Film, X, Link2, ChevronDown, Flower2, Gem } from 'lucide-react';
 import { supabase } from '../../../../lib/supabaseClient';
 
 const MAX_VIDEO_SIZE_MB = 30;
@@ -162,7 +162,7 @@ export function ContenidoTab({
                   desc: 'Pétalos animados, fondo oscuro con imagen',
                   accent: 'border-pink-500/40 bg-pink-500/5',
                   activeAccent: 'border-pink-500 bg-pink-500/15 ring-2 ring-pink-500/20',
-                  emoji: '🌸',
+                  Icon: Flower2,
                 },
                 {
                   key: 'cinematic',
@@ -170,7 +170,7 @@ export function ContenidoTab({
                   desc: 'Fondo claro, video en loop, tipografía editorial',
                   accent: 'border-sky-500/40 bg-sky-500/5',
                   activeAccent: 'border-sky-500 bg-sky-500/15 ring-2 ring-sky-500/20',
-                  emoji: '🎬',
+                  Icon: Film,
                 },
                 {
                   key: 'glassmorphic',
@@ -178,7 +178,7 @@ export function ContenidoTab({
                   desc: 'Estilo luxury, efecto de vidrio, video con parallax',
                   accent: 'border-violet-500/40 bg-violet-500/5',
                   activeAccent: 'border-violet-500 bg-violet-500/15 ring-2 ring-violet-500/20',
-                  emoji: '💎',
+                  Icon: Gem,
                 },
               ].map((style) => {
                 const isActive = (heroData.hero_style || 'classic') === style.key;
@@ -191,7 +191,9 @@ export function ContenidoTab({
                       isActive ? style.activeAccent : `${style.accent} hover:opacity-80`
                     }`}
                   >
-                    <div className="text-xl mb-1">{style.emoji}</div>
+                    <div className="mb-2 text-[var(--color-text-primary)]">
+                      <style.Icon className="w-5 h-5" />
+                    </div>
                     <h4 className="text-sm font-bold text-[var(--color-text-primary)]">{style.label}</h4>
                     <p className="text-[0.7rem] text-[var(--color-text-tertiary)] mt-0.5 leading-snug">{style.desc}</p>
                     {isActive && (

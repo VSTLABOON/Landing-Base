@@ -38,9 +38,9 @@
 @theme {
   /* 1. Mapeo Dinámico: El corazón de la personalización */
   /* Estas variables las controla useTheming.ts en tiempo real */
-  --color-primario: var(--color-primario, #D94F6E);
-  --color-secundario: var(--color-secundario, #3A6B34);
-  --color-acento: var(--color-acento, #C49A3C);
+  --color-primario: #526243;
+  --color-secundario: #ffd7db;
+  --color-acento: #e8dfd8;
   
   /* 2. Compatibilidad con componentes existentes */
   /* Redirigimos los nombres fijos a las variables dinámicas */
