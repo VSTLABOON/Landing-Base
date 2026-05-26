@@ -364,7 +364,7 @@ export default function SaasLandingPage() {
             </Link>
             <span className="h-4 w-px bg-[#526243]/20 block" aria-hidden="true" />
             <Link 
-              to="/login?mode=register&plan=basico" 
+              to="/login?mode=register" 
               className="bg-[#526243] hover:bg-[#526243]/90 text-white rounded-full px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-widest transition-all shadow-sm whitespace-nowrap"
             >
               Registrarse
@@ -417,7 +417,7 @@ export default function SaasLandingPage() {
               className="bg-transparent border-none outline-none flex-1 text-sm text-[#1F241C] placeholder:text-[#526243]/50 font-medium"
             />
             <Link 
-              to={`/login?mode=register&plan=basico&email=${encodeURIComponent(emailInput)}`}
+              to={`/login?mode=register&email=${encodeURIComponent(emailInput)}`}
               className="bg-[#526243] hover:bg-[#526243]/90 text-white rounded-full p-2.5 hover:scale-105 transition-transform"
             >
               <ArrowRight className="w-4 h-4" />
