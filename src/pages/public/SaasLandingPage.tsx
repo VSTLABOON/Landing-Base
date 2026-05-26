@@ -507,15 +507,17 @@ export default function SaasLandingPage() {
           {/* Features cards layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {PLAN_FEATURES[activeFeatureTab].map((feat, i) => (
-              <GlassCard key={i} className="p-8 bg-white/80 border border-[#526243]/10 shadow-sm flex flex-col justify-between min-h-[220px]">
-                <div className="w-10 h-10 rounded-full bg-[#ffd7db] border border-[#526243]/10 flex items-center justify-center mb-6 flex-shrink-0">
-                  {feat.icon && (() => {
-                    const Icon = feat.icon;
-                    return <Icon className="w-4 h-4 text-[#526243]" />;
-                  })()}
+              <GlassCard key={i} className="p-8 bg-white/80 border border-[#526243]/10 shadow-sm flex flex-col gap-4 min-h-[220px]">
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#ffd7db] border border-[#526243]/10 flex items-center justify-center flex-shrink-0">
+                    {feat.icon && (() => {
+                      const Icon = feat.icon;
+                      return <Icon className="w-4 h-4 text-[#526243]" />;
+                    })()}
+                  </div>
+                  <h3 className="text-base font-bold text-[#526243] tracking-tight">{feat.title}</h3>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-[#526243] mb-2 tracking-tight">{feat.title}</h3>
                   <p className="text-xs md:text-sm text-[#1F241C]/85 leading-relaxed font-medium">{feat.desc}</p>
                 </div>
               </GlassCard>
@@ -528,8 +530,7 @@ export default function SaasLandingPage() {
       <section className="py-20 md:py-32 px-6 relative z-10 bg-[#F8F6F2] border-y border-[#526243]/10">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-[#526243] uppercase tracking-widest text-[10px] font-bold block mb-4 bg-[#ffd7db]/60 border border-[#526243]/10 px-3 py-1 rounded-full w-max mx-auto shadow-sm">Testimonios</span>
-            <h2 className="text-3xl md:text-5xl font-semibold text-[#526243]">Casos Reales</h2>
+            <h2 className="text-3xl md:text-5xl font-semibold text-[#526243]">Experiencias compartidas</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t, i) => (

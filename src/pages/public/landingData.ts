@@ -71,19 +71,19 @@ export const TESTIMONIALS = [
   { 
     name: 'Martha Elena Ruiz', 
     city: 'CDMX', 
-    quote: 'El 14 de febrero pasado fue el primero que no terminé llorando de coraje. Otros años me quedaban hasta 20 bouquets de rosas rojas armados que nunca pasaban a recoger. Con la página, cada arreglo de $850 ya estaba pagado antes de que yo siquiera comprara la flor en la Central.', 
+    quote: 'El 14 de febrero pasado terminé llorando de coraje. Me quedaron como 20 ramos de rosas ya armados que los clientes me encargaron pero nunca pasaron a recoger. Perdí casi $15,000 pesos en flor que se marchitó y tiempo de mis ayudantes.', 
     color: 'bg-fuchsia-600' 
   },
   { 
     name: 'Guadalupe Santos', 
     city: 'Monterrey, N.L.', 
-    quote: 'Me daba miedo que mis señoras de siempre no quisieran usar la página, pero les encanta porque pueden pagar con transferencia y mandarme el comprobante ahí mismo. En la temporada de Cempasúchil vendí 40 coronas más porque no perdí tiempo contestando precios por WhatsApp.', 
+    quote: 'El 10 de Mayo pasado se me trabó el celular y, por un error de WhatsApp al restaurar la copia de seguridad, se me borraron los chats de la mañana. Perdimos dos pedidos de clientes de años y les quedamos mal. La vergüenza de fallarle a gente que confía en ti es lo que más te duele como dueña.', 
     color: 'bg-violet-600' 
   },
   { 
     name: 'Javier Méndez', 
     city: 'Guadalajara, Jal.', 
-    quote: 'Para las graduaciones de junio, el panel me salvó la vida. Podía ver cuántos centros de mesa teníamos para cada salón y cuánto nos faltaba por cobrar. Dejé de anotar pedidos en libretas mojadas que luego ni se entendían.', 
+    quote: 'Para las graduaciones anotaba todo en hojas sueltas. Al final se nos mojó la libreta en la mesa de armado y perdimos dos direcciones de entrega. Tuvimos que andar adivinando a quién le tocaba cada centro de mesa.', 
     color: 'bg-emerald-600' 
   },
 ];
