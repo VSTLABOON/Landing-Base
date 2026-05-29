@@ -346,13 +346,13 @@ export default function SaasLandingPage() {
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className={`fixed top-0 inset-x-0 z-50 py-4 px-6 transition-all duration-300 ${scrolled ? 'bg-[#F8F6F2]/80 backdrop-blur-md border-b border-[#526243]/10' : 'bg-transparent'}`}
       >
-        <div className="max-w-5xl mx-auto flex items-center justify-between bg-white/70 backdrop-blur-md rounded-full px-6 py-3 border border-[#526243]/10 shadow-[0_8px_32px_rgba(82,98,67,0.04)]">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4 bg-white/70 backdrop-blur-md rounded-full px-6 py-3 border border-[#526243]/10 shadow-[0_8px_32px_rgba(82,98,67,0.04)]">
           <div className="flex items-center gap-2 flex-shrink-0">
             <img src="/logo.webp" alt="BotaniQ Logo" className="w-8 h-8 rounded-full border border-[#526243]/20 object-cover" />
             <span className="font-bold text-base tracking-tight font-serif italic text-[#526243]">BotaniQ</span>
           </div>
           
-          <div className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-[#526243]/85">
+          <div className="hidden md:flex items-center gap-4 lg:gap-8 text-xs font-bold uppercase tracking-wider lg:tracking-widest text-[#526243]/85">
             <a href="#proceso" className="hover:text-[#526243] transition-colors">Cómo Funciona</a>
             <a href="#como-funciona" className="hover:text-[#526243] transition-colors">Características</a>
             <a href="#precios" className="hover:text-[#526243] transition-colors">Precios</a>

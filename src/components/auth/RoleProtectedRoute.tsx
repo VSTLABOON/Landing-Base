@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTenant } from '../../context/TenantContext';
 import type { UserRole } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
+import { getSubdomainUrl } from '../../lib/domain';
 
 interface RoleProtectedRouteProps {
   allowedRoles: UserRole[];
@@ -12,26 +14,9 @@ interface RoleProtectedRouteProps {
 export default function RoleProtectedRoute({ allowedRoles, children }: RoleProtectedRouteProps) {
   const { session, profile, isLoading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  if (isLoading || tenantLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background-secondary)]">
-        <div className="flex flex-col items-center gap-4">
-          <svg className="animate-spin h-8 w-8 text-verde" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" />
-          </svg>
-          <p className="text-[var(--color-text-tertiary)] font-medium">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Si no hay sesión activa, redirigir al login
-  if (!session) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // 3. Verificar si el usuario tiene el rol permitido Y pertenece a esta tienda específica
   // Excepción 1: superadmin tiene acceso global.
   // Excepción 2: la zona de cliente (/mi-cuenta) es accesible para TODOS los usuarios logueados,
   // ya que el dueño de una tienda puede comprar como cliente en otra.
@@ -43,6 +28,78 @@ export default function RoleProtectedRoute({ allowedRoles, children }: RoleProte
     isSuperAdmin || 
     isCustomerRoute || 
     (belongsToThisShop && allowedRoles.includes(profile?.rol as UserRole));
+
+  useEffect(() => {
+    let active = true;
+    if (isLoading || tenantLoading || !session || !profile || hasAccess) {
+      return;
+    }
+
+    // Si es dueño o empleado pero está en el dominio incorrecto, redirigir dinámicamente a su tienda
+    const isAdminRole = ['dueño', 'empleado'].includes(profile.rol);
+    if (isAdminRole && profile.tienda_id) {
+      setIsRedirecting(true);
+      supabase
+        .from('tiendas')
+        .select('slug')
+        .eq('id', profile.tienda_id)
+        .single()
+        .then(({ data }) => {
+          if (active && data?.slug) {
+            // Mantener el path relativo (ej. /admin/pedidos) y query params
+            const path = window.location.pathname.startsWith('/admin')
+              ? window.location.pathname
+              : '/admin';
+            const search = window.location.search;
+            const targetUrl = getSubdomainUrl(data.slug, path + search);
+            
+            setRedirectUrl(targetUrl);
+          } else {
+            setIsRedirecting(false);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching tenant slug for redirection:', err);
+          if (active) setIsRedirecting(false);
+        });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [isLoading, tenantLoading, session, profile, hasAccess]);
+
+  if (isLoading || tenantLoading || isRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background-secondary)]">
+        <div className="flex flex-col items-center gap-4">
+          <svg className="animate-spin h-8 w-8 text-verde" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" />
+          </svg>
+          <p className="text-[var(--color-text-tertiary)] font-medium">
+            {isRedirecting ? 'Redirigiendo a tu florería...' : 'Verificando sesión...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si se encontró una URL de redirección externa o interna
+  if (redirectUrl) {
+    // Si la redirección es a otro dominio, usar window.location.href
+    if (!redirectUrl.includes(window.location.hostname)) {
+      window.location.href = redirectUrl;
+      return null;
+    }
+    // Si es el mismo hostname (ej: en local), redirigir
+    window.location.href = redirectUrl;
+    return null;
+  }
+
+  // Si no hay sesión activa, redirigir al login
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (!profile || !hasAccess) {
     return (

@@ -82,14 +82,15 @@ export default function LoginPage() {
           return;
         }
 
-        // Usuario nuevo sin tienda asignada → onboarding
-        if (profile && !profile.tienda_id) {
+        // Usuario nuevo sin tienda asignada → onboarding (solo dueño y en la plataforma central)
+        if (profile && !profile.tienda_id && profile.rol === 'dueño' && isPlatform) {
           navigate(`/onboarding${plan ? `?plan=${plan}` : ''}`, { replace: true });
           return;
         }
 
         if (profile && ADMIN_ROLES.includes(profile.rol as UserRole)) {
           // Si es dueño, verificar si ya completó onboarding (cambió el slug/nombre por defecto)
+          // Solo forzar onboarding si estamos en la plataforma central
           if (profile.rol === 'dueño' && profile.tienda_id) {
             try {
               const { data: tienda } = await supabase
@@ -100,7 +101,7 @@ export default function LoginPage() {
 
               if (tienda) {
                 const isDefault = tienda.slug.startsWith('tienda-') || tienda.nombre === 'Mi Nueva Florería';
-                if (isDefault) {
+                if (isDefault && isPlatform) {
                   navigate(`/onboarding${plan ? `?plan=${plan}` : ''}`, { replace: true });
                   return;
                 }

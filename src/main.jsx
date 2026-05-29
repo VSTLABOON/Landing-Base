@@ -28,6 +28,7 @@ import { HelmetProvider } from 'react-helmet-async'
 import { TenantProvider, useTenant } from './context/TenantContext.tsx'
 import { AuthProvider } from './context/AuthContext.tsx'
 import { ThemeProvider } from './context/ThemeContext.tsx'
+import { isPlatformDomain } from './lib/domain.ts'
 import FeatureGate from './components/FeatureGate.tsx'
 import RoleProtectedRoute from './components/auth/RoleProtectedRoute.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
@@ -76,8 +77,17 @@ function RootRouter() {
   const { status } = useTenant()
 
   if (status === 'loading')    return <LoadingScreen />
-  if (status === 'platform')   return <SaasLandingPage />
   if (status === 'not_found')  return <StoreNotFoundPage />
+
+  // Si estamos en el dominio de producción/staging real de la plataforma (no localhost),
+  // siempre mostramos la landing page del SaaS en la ruta raíz.
+  const hostname = window.location.hostname
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)
+  if (!isLocal && isPlatformDomain(hostname)) {
+    return <SaasLandingPage />
+  }
+
+  if (status === 'platform')   return <SaasLandingPage />
   if (status === 'ready')      return <StorefrontPage />
 
   return <LoadingScreen /> // Fallback defensivo

@@ -469,6 +469,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '').trim();
     };
 
+    // 1. Actualizar el título de la página
     if (status === 'platform') {
       document.title = 'BotaniQ — Crea tu tienda de flores online';
     } else if (status === 'ready' && tenant) {
@@ -478,6 +479,39 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     } else {
       document.title = 'BotaniQ — Crea tu tienda de flores online';
     }
+
+    // 2. Actualizar el Favicon y el Apple Touch Icon de forma dinámica
+    let faviconUrl = '/logo.webp';
+    if (status === 'ready' && tenant?.logo_url) {
+      faviconUrl = tenant.logo_url;
+    }
+
+    // Actualizar <link rel="icon">
+    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = faviconUrl;
+    if (faviconUrl.endsWith('.webp')) {
+      link.type = 'image/webp';
+    } else if (faviconUrl.endsWith('.png')) {
+      link.type = 'image/png';
+    } else if (faviconUrl.endsWith('.ico')) {
+      link.type = 'image/x-icon';
+    } else {
+      link.type = 'image/jpeg';
+    }
+
+    // Actualizar <link rel="apple-touch-icon"> (Para accesos directos de PWA en móviles)
+    let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+    if (!appleLink) {
+      appleLink = document.createElement('link');
+      appleLink.rel = 'apple-touch-icon';
+      document.head.appendChild(appleLink);
+    }
+    appleLink.href = faviconUrl;
   }, [status, tenant]);
 
   /**
