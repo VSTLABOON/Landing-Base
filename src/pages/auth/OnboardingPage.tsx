@@ -17,7 +17,7 @@ import { getLocaleAndCurrency } from '../../lib/stripeHelpers';
 import { getSubdomainUrl, getPlatformDomain } from '../../lib/domain';
 import {
   User, Store, Globe, ArrowRight, ArrowLeft,
-  Loader2, CheckCircle2, Sparkles, AlertCircle, Flower, MapPin
+  Loader2, CheckCircle2, Sparkles, AlertCircle, Flower, MapPin, LogOut
 } from 'lucide-react';
 
 // ── Utilidades ──────────────────────────────────────────────────
@@ -180,6 +180,18 @@ export default function OnboardingPage() {
       navigate('/login', { replace: true });
     }
   }, [session, user, navigate]);
+
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+      await supabase.auth.signOut();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Error logging out from onboarding:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Check slug availability with debounce
   useEffect(() => {
@@ -401,6 +413,18 @@ export default function OnboardingPage() {
 
       {/* Lado Derecho: Formulario fijo */}
       <div className="onb-form-side">
+        {/* Botón superior de Cerrar Sesión */}
+        <div className="absolute top-6 right-6 z-30">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/50 hover:text-white hover:bg-white/5 transition-all border border-white/10 hover:border-white/20"
+          >
+            <LogOut style={{ width: 14, height: 14 }} />
+            Cerrar Sesión
+          </button>
+        </div>
+
         {/* Mobile Background Video (Visible solo cuando no está el Hero) */}
         <div className="onb-mobile-bg">
           <CrossfadeVideo src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_074625_a81f018a-956b-43fb-9aee-4d1508e30e6a.mp4" />

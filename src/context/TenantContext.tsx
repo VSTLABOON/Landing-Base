@@ -395,7 +395,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         }
       } catch (err) {
         if (!cancelled) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = err instanceof Error 
+            ? err.message 
+            : (err && typeof err === 'object' && 'message' in err)
+              ? String((err as any).message)
+              : JSON.stringify(err);
           logger.warn(
             `⚠️ [TenantContext] Usando fallback. ` +
             (hasProfileOverride
